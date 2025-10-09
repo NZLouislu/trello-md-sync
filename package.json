@@ -1,0 +1,9 @@
+{
+  "name": "trello-md-sync",
+  "version": "0.0.1",
+  "description": "CLI placeholder that prints a development notice.",
+  "license": "MIT",
+  "bin": {
+    "trello-md-sync": "./index.js"
+  }
+}
