@@ -1,9 +1,59 @@
 {
   "name": "trello-md-sync",
   "version": "0.0.1",
-  "description": "CLI placeholder that prints a development notice.",
+  "description": "A tool to sync Trello with local markdown files",
+  "main": "dist/index.js",
+  "author": "Louis Lu, NZLouis <nzlouis.com@gmail.com> (https://blog.nzlouis.com)",
+  "homepage": "https://nzlouis.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nzlouislu/trello-md-sync.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nzlouislu/trello-md-sync/issues"
+  },
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "test": "mocha -r ts-node/register \"tests/**/*.test.ts\" \"src/**/__tests__/**/*.test.ts\"",
+    "lint": "prettier --check .",
+    "md": "set MD_INPUT_DIR=./examples/md&& set MD_OUTPUT_DIR=./examples/items&& node dist/src/trello/md-to-trello.js",
+    "md:logs": "set VERBOSE=1&& npm run md",
+    "md:json": "set LOG_JSON=1&& npm run md",
+    "trello": "set MD_OUTPUT_DIR=./examples/items&& node dist/src/trello/trello-to-md.js",
+    "trello:logs": "set VERBOSE=1&& npm run trello",
+    "trello:json": "set LOG_JSON=1&& npm run trello"
+  },
+  "keywords": [
+    "github",
+    "project",
+    "markdown",
+    "sync"
+  ],
   "license": "MIT",
-  "bin": {
-    "trello-md-sync": "./index.js"
+  "dependencies": {
+    "@octokit/graphql": "^7.0.1",
+    "dotenv": "^16.3.1",
+    "github-projects-md-sync": "^0.1.8",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "strip-indent": "^4.1.0",
+    "unified": "^11.0.5",
+    "unist-util-select": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.4.5",
+    "mocha": "^10.2.0",
+    "prettier": "^3.0.0",
+    "rimraf": "^5.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
