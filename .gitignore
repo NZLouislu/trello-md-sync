@@ -19,3 +19,13 @@ yarn-error.log*
 .DS_Store
 /tasks
 /lib
+/coverage/
+/.nyc_output
+
+# Tests (ignore ephemeral artifacts under src/testing; keep .test.ts sources)
+src/testing/**/__snapshots__/
+src/testing/**/.tmp/
+src/testing/**/*.tmp.*
+src/testing/**/*.log
+src/testing/**/output/
+src/testing/**/export/

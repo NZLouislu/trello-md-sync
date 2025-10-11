@@ -1,0 +1,28 @@
+{
+  "extension": [
+    ".ts"
+  ],
+  "include": [
+    "src/trello/markdown-parser.ts",
+    "src/trello/renderer.ts",
+    "src/trello/status-normalizer.ts",
+    "src/trello/types.ts",
+    "src/utils/markdown.ts"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "examples/**",
+    "dist/**",
+    "node_modules/**"
+  ],
+  "reporter": [
+    "text-summary",
+    "lcov"
+  ],
+  "all": true,
+  "check-coverage": true,
+  "branches": 90,
+  "functions": 90,
+  "lines": 90,
+  "statements": 90
+}
