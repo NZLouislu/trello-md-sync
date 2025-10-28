@@ -13,10 +13,14 @@
     "url": "https://github.com/nzlouislu/trello-md-sync/issues"
   },
   "types": "dist/index.d.ts",
+  "bin": {
+    "md-to-trello": "dist/src/cli/md-to-trello-cli.js",
+    "trello-to-md": "dist/src/cli/trello-to-md-cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "clean": "rimraf dist",
-    "test": "nyc mocha -r ts-node/register \"tests/**/*.test.ts\" \"src/**/__tests__/**/*.test.ts\" \"src/testing/**/*.test.ts\"",
+    "test": "nyc mocha -r ts-node/register \"src/**/__tests__/**/*.test.ts\" \"src/testing/**/*.test.ts\"",
     "lint": "prettier --check .",
     "md": "set MD_INPUT_DIR=./examples/md&& set MD_OUTPUT_DIR=./examples/items&& node dist/src/trello/md-to-trello.js",
     "md:logs": "set VERBOSE=1&& npm run md",

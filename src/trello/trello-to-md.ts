@@ -3,11 +3,59 @@ import fs from "fs/promises";
 import path from "path";
 import { TrelloProvider } from "./provider";
 import { renderSingleStoryMarkdown } from "./renderer";
+import { parseMarkdownToStories } from "./markdown-parser";
 import type { Story, Todo } from "./types";
 
+type TrelloToMdProviderLike = {
+  listItems(boardId: string): Promise<any[]>;
+  getLists(boardId: string): Promise<{ id: string; name: string }[]>;
+};
+
+function toArray(value: unknown): string[] {
+  if (value === undefined || value === null) return [];
+  if (Array.isArray(value)) return value.flatMap(toArray);
+  if (typeof value === "string") return value.split(",").map(s => s.trim()).filter(Boolean);
+  return [String(value)].map(s => s.trim()).filter(Boolean);
+}
+
+function normalizeFilters(...inputs: unknown[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const input of inputs) {
+    for (const raw of toArray(input)) {
+      const lower = raw.toLowerCase();
+      if (!lower) continue;
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        out.push(lower);
+      }
+    }
+  }
+  return out;
+}
+
+function todosEqual(a: Todo[], b: Todo[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const ta = a[i];
+    const tb = b[i];
+    if ((ta.text || "").trim() !== (tb.text || "").trim()) return false;
+    if (!!ta.done !== !!tb.done) return false;
+  }
+  return true;
+}
+
+function storyEquivalent(a: Story, b: Story): boolean {
+  if ((a.storyId || "").trim() !== (b.storyId || "").trim()) return false;
+  if ((a.title || "").trim() !== (b.title || "").trim()) return false;
+  if ((a.status || "").trim() !== (b.status || "").trim()) return false;
+  if ((a.body || "").trim() !== (b.body || "").trim()) return false;
+  return todosEqual(a.todos || [], b.todos || []);
+}
 
 export function mapCardToStory(card: any, checklistName: string): Story {
-  const storyId = extractStoryIdFromCustomFields(card) || slugId(card.name || "");
+  const rawId = extractStoryIdFromCustomFields(card);
+  const storyId = rawId || slugId(card.name || "");
   const status = card.idListName || "";
   const todos: Todo[] = [];
   if (Array.isArray(card.checklists)) {
@@ -18,6 +66,9 @@ export function mapCardToStory(card: any, checklistName: string): Story {
       }
     }
   }
+  const labels = Array.isArray(card.labels)
+    ? card.labels.map((l: any) => (l?.name || "").trim()).filter((n: string) => !!n)
+    : [];
   return {
     storyId,
     title: card.name || "",
@@ -25,10 +76,11 @@ export function mapCardToStory(card: any, checklistName: string): Story {
     body: card.desc || "",
     todos,
     assignees: [],
-    labels: [],
-    meta: {}
+    labels,
+    meta: { generatedId: !rawId }
   };
 }
+
 function extractStoryIdFromCustomFields(card: any): string | "" {
   if (!Array.isArray(card.customFieldItems)) return "";
   for (const it of card.customFieldItems) {
@@ -74,6 +126,10 @@ export async function trelloToMd(
     mdOutputDir?: string;
     trelloStoryIdCustomFieldId?: string;
     projectRoot?: string;
+    provider?: TrelloToMdProviderLike;
+    list?: string | string[];
+    label?: string | string[];
+    storyId?: string | string[];
   },
   opts: { logLevel?: 'info'|'debug'; json?: boolean; verbose?: boolean; projectRoot?: string } = {}
 ): Promise<{ written: number }> {
@@ -110,9 +166,12 @@ export async function trelloToMd(
   const storyIdField = args?.trelloStoryIdCustomFieldId ?? process.env.TRELLO_STORY_ID_CUSTOM_FIELD_ID ?? undefined;
   const verbose = (opts.logLevel === 'debug') || !!opts.verbose;
   const logJson = !!opts.json;
+  const listFilters = normalizeFilters(args?.list, process.env.TRELLO_FILTER_LIST);
+  const labelFilters = normalizeFilters(args?.label, process.env.TRELLO_FILTER_LABEL);
+  const storyIdFilters = normalizeFilters(args?.storyId, process.env.TRELLO_FILTER_STORYID);
 
   await ensureDir(outputDir);
-  const provider = new TrelloProvider({ auth: { key, token }, listMap, checklistName, storyIdCustomFieldId: storyIdField });
+  const provider: TrelloToMdProviderLike = args?.provider ?? new TrelloProvider({ auth: { key, token }, listMap, checklistName, storyIdCustomFieldId: storyIdField });
   const cards: any[] = await provider.listItems(boardId);
   if (verbose) console.log(`mdsync: fetched cards=${cards.length}`);
   const lists = await provider.getLists(boardId);
@@ -122,13 +181,44 @@ export async function trelloToMd(
   await fs.mkdir(outputDir, { recursive: true });
   let written = 0;
   const writtenFiles: { file: string; storyId: string; title: string; status: string }[] = [];
-  for (const c of cards) {
+  const filteredCards = cards.filter((card: any) => {
+    if (listFilters.length) {
+      const listName = String(card.idListName || "").toLowerCase();
+      if (!listFilters.includes(listName)) return false;
+    }
+    if (labelFilters.length && Array.isArray(card.labels)) {
+      const cardLabels = card.labels.map((l: any) => String(l?.name || "").toLowerCase()).filter(Boolean);
+      if (!labelFilters.some(l => cardLabels.includes(l))) return false;
+    } else if (labelFilters.length && !Array.isArray(card.labels)) {
+      return false;
+    }
+    if (storyIdFilters.length) {
+      const sid = String(extractStoryIdFromCustomFields(card) || "").toLowerCase();
+      if (!sid || !storyIdFilters.includes(sid)) return false;
+    }
+    return true;
+  });
+
+  if (listFilters.length && filteredCards.length === 0 && verbose) console.warn("trello-to-md: no cards found for list filters", listFilters);
+  if (labelFilters.length && filteredCards.length === 0 && verbose) console.warn("trello-to-md: no cards found for label filters", labelFilters);
+  if (storyIdFilters.length && filteredCards.length === 0 && verbose) console.warn("trello-to-md: no cards found for storyId filters", storyIdFilters);
+
+  for (const c of filteredCards) {
     const s = mapCardToStory(c, checklistName);
     const md = renderSingleStoryMarkdown(s);
     const file = path.join(outputDir, fileNameFromStory(s));
     await fs.writeFile(file, md, "utf8");
     written++;
     writtenFiles.push({ file, storyId: s.storyId, title: s.title, status: s.status });
+    if (s.meta?.generatedId) {
+      console.warn(`trello-to-md: generated storyId for "${s.title}"`);
+    }
+    const parsed = parseMarkdownToStories(md, { statusMap: listMap, defaultChecklistName: checklistName });
+    const roundTrip = parsed[0];
+    const equivalent = roundTrip ? storyEquivalent(s, roundTrip) : false;
+    if (!equivalent) {
+      throw new Error(`Round-trip validation failed for ${s.storyId || s.title}`);
+    }
     if (verbose) console.log(`mdsync: wrote "${file}" | ${s.storyId} | ${s.title} | ${s.status}`);
   }
   if (verbose) {

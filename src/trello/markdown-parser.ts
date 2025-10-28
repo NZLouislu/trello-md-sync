@@ -1,9 +1,27 @@
 import { normalizeStatus } from "./status-normalizer";
 import type { Story, Todo } from "./types";
 
+type ParserLocation = { file?: string; line: number };
+
+export class MarkdownParseError extends Error {
+  code: string;
+  location: ParserLocation;
+  details?: Record<string, any>;
+  constructor(message: string, code: string, location: ParserLocation, details?: Record<string, any>) {
+    super(message);
+    this.name = "MarkdownParseError";
+    this.code = code;
+    this.location = location;
+    this.details = details;
+  }
+}
+
 type ParseOptions = {
   statusMap?: Record<string, string>;
   defaultChecklistName?: string;
+  filePath?: string;
+  strictStatus?: boolean;
+  requireStoryId?: boolean;
 };
 
 const sectionHeaderRe = /^##\s+Story:\s*(.+)\s*$/i;
@@ -40,6 +58,7 @@ export function parseMarkdownToStories(md: string, options: ParseOptions = {}): 
           i = nextIndex;
           continue;
         }
+
         i++;
       }
       continue;
@@ -97,7 +116,14 @@ function parseStorySection(lines: string[], start: number, options: ParseOptions
     i++;
   }
 
-  const normalizedStatus = normalizeAndMapStatus(status, options.statusMap);
+  const normalizedStatus = normalizeAndMapStatus(status, options.statusMap, options.strictStatus, {
+    file: options.filePath,
+    line: start + 1,
+    context: title || status
+  });
+  if (!storyId && options.requireStoryId) {
+    throw new MarkdownParseError("Story ID is required", "STORY_ID_MISSING", { file: options.filePath, line: start + 1 }, { title });
+  }
   const finalId = storyId || slugId(title);
 
   const story: Story = {
@@ -108,7 +134,13 @@ function parseStorySection(lines: string[], start: number, options: ParseOptions
     todos,
     assignees,
     labels,
-    meta
+    meta: {
+      ...meta,
+      source: {
+        file: options.filePath,
+        line: start + 1
+      }
+    }
   };
 
   return { story, nextIndex: i };
@@ -177,7 +209,14 @@ function parseBlockStory(lines: string[], start: number, column: string, options
     i++;
   }
 
-  const inferred = normalizeAndMapStatus(column, options.statusMap);
+  const inferred = normalizeAndMapStatus(column, options.statusMap, options.strictStatus, {
+    file: options.filePath,
+    line: start + 1,
+    context: title || column
+  });
+  if (!storyId && options.requireStoryId) {
+    throw new MarkdownParseError("Story ID is required", "STORY_ID_MISSING", { file: options.filePath, line: start + 1 }, { title });
+  }
   const finalId = storyId || slugId(title);
 
   const story: Story = {
@@ -188,7 +227,13 @@ function parseBlockStory(lines: string[], start: number, column: string, options
     todos,
     assignees,
     labels,
-    meta
+    meta: {
+      ...meta,
+      source: {
+        file: options.filePath,
+        line: start + 1
+      }
+    }
   };
 
   return { story, nextIndex: i };
@@ -216,7 +261,12 @@ function slugId(title: string): string {
   return s ? `mdsync-${s}` : `mdsync-untitled`;
 }
 
-function normalizeAndMapStatus(status: string, map?: Record<string, string>): string {
+function normalizeAndMapStatus(
+  status: string,
+  map: Record<string, string> | undefined,
+  strict: boolean | undefined,
+  ctx: { file?: string; line: number; context?: string }
+): string {
   const n = normalizeStatus(status || "", map || {});
   const plain = n.replace(/\s+/g, " ").trim();
   if (!map) return plain;
@@ -228,6 +278,9 @@ function normalizeAndMapStatus(status: string, map?: Record<string, string>): st
       hit = k;
       break;
     }
+  }
+  if (!hit && strict) {
+    throw new MarkdownParseError("Status is not mapped", "STATUS_UNKNOWN", { file: ctx.file, line: ctx.line }, { status, context: ctx.context });
   }
   return hit ? map[hit] : plain;
 }
