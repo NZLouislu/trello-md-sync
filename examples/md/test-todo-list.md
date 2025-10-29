@@ -39,7 +39,7 @@
     - [ ] `package.json`, task documents, and README highlight the standardized title format and verification commands
     - [ ] `npm t` and `npm run build` pass locally and in CI without warnings or errors
     - [ ] Migration documentation or scripts guide converting legacy `ID:` card names to `STORY-XXXX`
-    - [ ] `tasks/测试计划story.md` and related planning docs incorporate the new verification checklist
+    - [ ] `tasks/test planning story.md` and related planning docs incorporate the new verification checklist
   Priority: p1
   Labels: [sync, trello, ci]
   Assignees: [devops]

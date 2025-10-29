@@ -346,17 +346,18 @@ async function buildStoryPlan(
     listNameById: Record<string, string>;
     lookup: CardLookup;
     warn: (msg: string) => void;
-    collectPriority: (value: string | undefined, mapped: boolean) => void;
+    collectPriority: (value: string | undefined, isMapped: boolean, labelExists: boolean) => void;
     collectLabelMiss: (storyId: string | undefined, labels: string[]) => void;
     collectAliasMiss: (storyId: string | undefined, aliases: string[]) => void;
     memberAliasMap?: Record<string, string> | string;
+    priorityLabelMap?: Record<string, string> | string;
   }
 ): Promise<StoryPlan> {
   const statusKey = normalizeStatusKey(story.status);
   const mapped = ctx.statusMap[statusKey];
   const targetListName = mapped || (story.status || "").trim();
-  if (!targetListName && ctx.strictStatus) {
-    throw new Error(`Unmapped status for story ${story.storyId || story.title}`);
+  if (!mapped && ctx.strictStatus) {
+    throw new Error(`Status "${story.status}" is not mapped`);
   }
 
   const expectedCardName = formatStoryName(story.storyId, story.title);
@@ -405,15 +406,46 @@ async function buildStoryPlan(
     ? await ctx.provider.resolveMemberIds(ctx.boardId, desiredMemberNames)
     : { ids: [] as string[], missing: [] as string[] };
 
+  // Handle priority after resolving labels
+  if (priorityValue) {
+    // Check if priority maps to a label
+    const isMapped = ctx.priorityLabelMap ? (() => {
+      const map = typeof ctx.priorityLabelMap === 'string'
+        ? (() => { try { return JSON.parse(ctx.priorityLabelMap as string); } catch { return {}; } })()
+        : ctx.priorityLabelMap;
+      return !!map && !!map[priorityValue];
+    })() : false;
+
+    let labelExists = false;
+    if (isMapped) {
+      const mappedLabel = (() => {
+        const map = typeof ctx.priorityLabelMap === 'string'
+          ? (() => { try { return JSON.parse(ctx.priorityLabelMap as string); } catch { return {}; } })()
+          : ctx.priorityLabelMap;
+        return map[priorityValue];
+      })();
+
+      // Check if the mapped label exists
+      if (desiredLabelNames.includes(mappedLabel)) {
+        labelExists = !labelResult.missing.includes(mappedLabel);
+      } else {
+        // Need to check separately
+        const priorityLabelResult = await ctx.provider.resolveLabelIds(ctx.boardId, [mappedLabel]);
+        labelExists = priorityLabelResult.missing.length === 0;
+      }
+    }
+
+    ctx.collectPriority(priorityValue, isMapped, labelExists);
+  }
+
   if (labelResult.missing.length) {
-    ctx.warn(`[warn] missing labels for ${story.storyId || story.title}: ${labelResult.missing.join(", ")}`);
+    ctx.warn(`[warn] missing labels for ${story.storyId || story.title}: ${labelResult.missing.join(", ")} - run with --ensure-labels to create them`);
     ctx.collectLabelMiss(story.storyId, labelResult.missing);
   }
   if (memberResult.missing.length) {
-    ctx.warn(`[warn] missing members for ${story.storyId || story.title}: ${memberResult.missing.join(", ")}`);
+    ctx.warn(`[warn] missing members for ${story.storyId || story.title}: ${memberResult.missing.join(", ")} - consider configuring member-alias-map`);
     ctx.collectAliasMiss(story.storyId, memberResult.missing);
   }
-  if (priorityValue) ctx.collectPriority(priorityValue, false);
 
   const existingLabelIds = extractLabelIds(existing);
   const existingMemberIds = extractMemberIds(existing);
@@ -632,19 +664,18 @@ export async function mdToTrello(
       listNameById,
       lookup,
       warn,
-      collectPriority: (priority) => {
+      collectPriority: (priority, isMapped, labelExists) => {
         if (!priority) return;
-        // Check if priority maps to a label
-        const isMapped = cfg.priorityLabelMap ? (() => {
-          const map = typeof cfg.priorityLabelMap === 'string'
-            ? (() => { try { return JSON.parse(cfg.priorityLabelMap as string); } catch { return {}; } })()
-            : cfg.priorityLabelMap;
-          return !!map && !!map[priority];
-        })() : false;
-        
-        if (isMapped) priorityStats.prioritiesWithMappings++;
-        else priorityStats.prioritiesMissingLabels++;
-        if (!isMapped) priorityWarnings.push(priority);
+        if (isMapped) {
+          priorityStats.prioritiesWithMappings++;
+          if (!labelExists) {
+            priorityStats.prioritiesMissingLabels++;
+            priorityWarnings.push(priority);
+          }
+        } else {
+          priorityStats.prioritiesMissingLabels++;
+          priorityWarnings.push(priority);
+        }
       },
       collectLabelMiss(storyId, labels) {
         if (!labels.length) return;
@@ -656,7 +687,8 @@ export async function mdToTrello(
         aliasWarnings.push(`${storyId || "(no-id)"}:${aliases.join("|")}`);
         aliasIssues.add(storyId || "(no-id)");
       },
-      memberAliasMap: cfg.memberAliasMap
+      memberAliasMap: cfg.memberAliasMap,
+      priorityLabelMap: cfg.priorityLabelMap
     });
     plans.push(plan);
   }
