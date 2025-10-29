@@ -59,8 +59,8 @@ describe("parser branches more", () => {
       "Z"
     ].join("\n");
     const s = parseMarkdownToStories(md, { statusMap: { backlog: "Backlog" } })[0];
-    assert.ok(s.storyId.startsWith("mdsync-"));
+    assert.equal(s.storyId, "");
     const f = preferredStoryFileName({ ...s, storyId: "", title: "" } as any);
-    assert.equal(f, "mdsync-untitled.md");
+    assert.equal(f, "untitled.md");
   });
 });

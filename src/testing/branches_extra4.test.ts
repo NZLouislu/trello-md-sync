@@ -27,7 +27,7 @@ describe("extra branch coverage 4", () => {
       "Body"
     ].join("\n");
     const s = parseMarkdownToStories(md, { statusMap: { ready: "Ready" } })[0];
-    assert.ok(s.storyId.startsWith("mdsync-noid"));
+    assert.equal(s.storyId, "");
     assert.equal(s.status, "");
   });
 
@@ -40,8 +40,7 @@ describe("extra branch coverage 4", () => {
       "  - [ ] t1"
     ].join("\n");
     const s = parseMarkdownToStories(md, { statusMap: { ready: "Ready" } })[0];
-    assert.ok(s.storyId.startsWith("mdsync-"));
-    assert.ok(s.storyId.includes("untitled"));
+    assert.equal(s.storyId, "");
     assert.equal((s as any).meta.foo, "bar");
   });
 
@@ -51,6 +50,6 @@ describe("extra branch coverage 4", () => {
     assert.ok(md.includes("### Status"));
     assert.ok(md.includes("Backlog"));
     const name = preferredStoryFileName({ storyId: "", title: "" } as any);
-    assert.equal(name, "mdsync-untitled.md");
+    assert.equal(name, "untitled.md");
   });
 });

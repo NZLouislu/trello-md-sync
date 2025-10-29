@@ -5,6 +5,7 @@ import { TrelloProvider } from "./provider";
 import { renderSingleStoryMarkdown } from "./renderer";
 import { parseMarkdownToStories } from "./markdown-parser";
 import type { Story, Todo } from "./types";
+import { parseFormattedStoryName, storyFileName } from "./story-format";
 
 type TrelloToMdProviderLike = {
   listItems(boardId: string): Promise<any[]>;
@@ -54,9 +55,14 @@ function storyEquivalent(a: Story, b: Story): boolean {
 }
 
 export function mapCardToStory(card: any, checklistName: string): Story {
+  const rawName = String(card?.name || "").trim();
+  const parsedName = parseFormattedStoryName(rawName);
   const rawId = extractStoryIdFromCustomFields(card);
-  const storyId = rawId || slugId(card.name || "");
-  const status = card.idListName || "";
+  let storyId = rawId || "";
+  if (parsedName.storyId && !storyId) storyId = parsedName.storyId;
+  let title = rawName;
+  if (parsedName.storyId) title = parsedName.title || "";
+  const status = (card.idListName || "").replace(/[^\w\s-]/g, "").trim();
   const todos: Todo[] = [];
   if (Array.isArray(card.checklists)) {
     const cl = card.checklists.find((c: any) => c.name === checklistName);
@@ -71,13 +77,13 @@ export function mapCardToStory(card: any, checklistName: string): Story {
     : [];
   return {
     storyId,
-    title: card.name || "",
+    title,
     status,
     body: card.desc || "",
     todos,
     assignees: [],
     labels,
-    meta: { generatedId: !rawId }
+    meta: { generatedId: !storyId }
   };
 }
 
@@ -92,13 +98,6 @@ function extractStoryIdFromCustomFields(card: any): string | "" {
   }
   return "";
 }
-function slugId(title: string): string {
-  const s = (title || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return s ? `mdsync-${s}` : "mdsync-untitled";
-}
-function safeSlug(s: string): string {
-  return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
 function truncateBaseName(name: string, max: number): string {
   if (name.length <= max) return name;
   const extIdx = name.lastIndexOf(".");
@@ -108,10 +107,8 @@ function truncateBaseName(name: string, max: number): string {
   return base.slice(0, keep) + ext;
 }
 function fileNameFromStory(s: Story): string {
-  const id = (s.storyId || "").trim();
-  const titleSlug = safeSlug(s.title || "");
-  const base = id ? `${safeSlug(id)}-${titleSlug || "untitled"}.md` : `mdsync-${titleSlug || "untitled"}.md`;
-  return truncateBaseName(base, 120);
+  const base = storyFileName(s);
+  return truncateBaseName(base, 200);
 }
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
@@ -132,7 +129,7 @@ export async function trelloToMd(
     storyId?: string | string[];
   },
   opts: { logLevel?: 'info'|'debug'; json?: boolean; verbose?: boolean; projectRoot?: string } = {}
-): Promise<{ written: number }> {
+): Promise<{ written: number; files: { file: string; storyId: string; title: string; status: string }[]; totalCards: number; filteredCards: number }> {
   const projectRoot = opts.projectRoot ?? args?.projectRoot ?? path.resolve(__dirname, "../../");
   const key = args?.trelloKey ?? process.env.TRELLO_KEY ?? "";
   const token = args?.trelloToken ?? process.env.TRELLO_TOKEN ?? "";
@@ -193,17 +190,32 @@ export async function trelloToMd(
       return false;
     }
     if (storyIdFilters.length) {
-      const sid = String(extractStoryIdFromCustomFields(card) || "").toLowerCase();
+      const sidRaw = extractStoryIdFromCustomFields(card) || parseFormattedStoryName(String(card?.name || "")).storyId || "";
+      const sid = String(sidRaw).toLowerCase();
       if (!sid || !storyIdFilters.includes(sid)) return false;
     }
     return true;
+  });
+
+  const sortedCards = filteredCards.slice().sort((a, b) => {
+    const parsedA = parseFormattedStoryName(String(a?.name || ""));
+    const parsedB = parseFormattedStoryName(String(b?.name || ""));
+    const idA = (extractStoryIdFromCustomFields(a) || parsedA.storyId || "").toLowerCase();
+    const idB = (extractStoryIdFromCustomFields(b) || parsedB.storyId || "").toLowerCase();
+    if (idA && idB && idA !== idB) return idA < idB ? -1 : 1;
+    if (idA && !idB) return -1;
+    if (!idA && idB) return 1;
+    const titleA = (parsedA.title || a?.name || "").toLowerCase();
+    const titleB = (parsedB.title || b?.name || "").toLowerCase();
+    if (titleA !== titleB) return titleA < titleB ? -1 : 1;
+    return String(a?.id || "").localeCompare(String(b?.id || ""));
   });
 
   if (listFilters.length && filteredCards.length === 0 && verbose) console.warn("trello-to-md: no cards found for list filters", listFilters);
   if (labelFilters.length && filteredCards.length === 0 && verbose) console.warn("trello-to-md: no cards found for label filters", labelFilters);
   if (storyIdFilters.length && filteredCards.length === 0 && verbose) console.warn("trello-to-md: no cards found for storyId filters", storyIdFilters);
 
-  for (const c of filteredCards) {
+  for (const c of sortedCards) {
     const s = mapCardToStory(c, checklistName);
     const md = renderSingleStoryMarkdown(s);
     const file = path.join(outputDir, fileNameFromStory(s));
@@ -228,7 +240,7 @@ export async function trelloToMd(
   if (logJson) {
     try { console.log(JSON.stringify({ mdsyncDetails: { writtenFiles } })); } catch {}
   }
-  return { written };
+  return { written, files: writtenFiles, totalCards: cards.length, filteredCards: filteredCards.length };
 }
 if (require.main === module) {
   trelloToMd().then(r => {

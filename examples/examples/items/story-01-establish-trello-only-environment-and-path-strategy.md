@@ -1,4 +1,4 @@
-## Story: Establish Trello-only environment and path strategy
+## Story: STORY-01 Establish Trello-only environment and path strategy
 
 ### Story ID
 STORY-01

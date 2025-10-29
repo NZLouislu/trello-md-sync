@@ -1,3 +1,5 @@
+import { parseFormattedStoryName } from "./story-format";
+
 type ListMap = Record<string,string>;
 type RetryOpts = { retries?: number; baseMs?: number; factor?: number; };
 type Auth = { key: string; token: string; };
@@ -125,6 +127,8 @@ export class TrelloProvider {
       }
     }
     const cards: any[] = await this.listItems(boardId);
+    const matchesById: any[] = [];
+    const normalizedId = String(storyId || "").trim().toLowerCase();
     for (const c of cards) {
       if (this.storyIdCustomFieldId && Array.isArray(c.customFieldItems)) {
         const match = c.customFieldItems.find((it: any) => it.idCustomField === this.storyIdCustomFieldId && (it.value?.text || it.value?.number || it.value?.checked) === storyId);
@@ -133,6 +137,22 @@ export class TrelloProvider {
           return c as Card;
         }
       }
+      if (normalizedId) {
+        const parsed = parseFormattedStoryName(String(c?.name || ""));
+        if (parsed.storyId && parsed.storyId.toLowerCase() === normalizedId) {
+          matchesById.push(c);
+        }
+      }
+    }
+    if (matchesById.length === 1) {
+      const card = matchesById[0];
+      if (storyId) this.idCache.set(storyId, card.id);
+      return card as Card;
+    }
+    if (matchesById.length > 1) {
+      const names = matchesById.map((c: any) => String(c?.name || ""));
+      this.logger.warn?.("trello.lookup.duplicateNames", { storyId, names });
+      throw new Error(`Multiple cards share story id ${storyId}`);
     }
     const byTitle = (await this.req(`/search?query=${encodeURIComponent(title)}&modelTypes=cards&board_fields=name&card_fields=name,desc,idList,labels,idMembers&boards_limit=1&cards_limit=20`, { method: "GET" })).cards || [];
     const titleCard = byTitle.find((c: any) => c.name === title);
@@ -210,6 +230,42 @@ export class TrelloProvider {
     return { ids, missing };
   }
 
+  async ensureLabels(boardId: string, labels: { name: string; color?: string }[], options?: { create?: boolean }): Promise<{ created: string[]; existing: string[]; missing: string[] }> {
+    const created: string[] = [];
+    const existing: string[] = [];
+    const missing: string[] = [];
+    if (!labels.length) return { created, existing, missing };
+    const current = await this.getBoardLabels(boardId);
+    const byName = new Map<string, any>();
+    for (const label of current) {
+      const key = (label.name || "").toLowerCase();
+      if (key) byName.set(key, label);
+    }
+    for (const input of labels) {
+      const key = (input.name || "").toLowerCase();
+      if (!key) continue;
+      if (byName.has(key)) {
+        const hit = byName.get(key);
+        if (hit?.id) {
+          existing.push(hit.id);
+          await this.cacheLabel(boardId, key, hit);
+        }
+        continue;
+      }
+      if (options?.create === false) {
+        missing.push(input.name);
+        continue;
+      }
+      const color = input.color || "sky";
+      const createdLabel = await this.req(`/labels`, { method: "POST", body: new URLSearchParams({ idBoard: boardId, name: input.name, color }) as any });
+      if (createdLabel?.id) {
+        created.push(createdLabel.id);
+        await this.cacheLabel(boardId, key, createdLabel);
+      }
+    }
+    return { created, existing, missing };
+  }
+
   async resolveMemberIds(boardId: string, names: string[]): Promise<{ ids: string[]; missing: string[] }> {
     const ids: string[] = [];
     const missing: string[] = [];
@@ -234,6 +290,27 @@ export class TrelloProvider {
     }
     if (missing.length) this.logger.warn?.("trello.members.missing", { missing });
     return { ids, missing };
+  }
+
+  async ensureMembers(boardId: string, aliases: Record<string, string>): Promise<{ mapped: Record<string, string>; missing: string[] }> {
+    const mapped: Record<string, string> = {};
+    const missing: string[] = [];
+    if (!aliases || !Object.keys(aliases).length) return { mapped, missing };
+    const members = await this.getBoardMembers(boardId);
+    for (const m of members) {
+      const key = ((m.username || m.fullName || m.memberFullName || "") as string).toLowerCase();
+      if (key) this.memberCache.set(key, m);
+    }
+    for (const [alias, trelloName] of Object.entries(aliases)) {
+      const targetKey = (trelloName || "").toLowerCase();
+      const member = this.memberCache.get(targetKey) || members.find((m: any) => ((m.username || m.fullName || m.memberFullName || "") as string).toLowerCase() === targetKey);
+      if (member?.id) {
+        mapped[alias] = member.id;
+      } else {
+        missing.push(alias);
+      }
+    }
+    return { mapped, missing };
   }
 
   async setCardLabels(cardId: string, labelIds: string[]): Promise<void> {

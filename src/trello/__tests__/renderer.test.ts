@@ -5,7 +5,7 @@ describe("renderer", () => {
   it("renders sections and naming by id", () => {
     const s: Story = { storyId: "STORY-123", title: "Test Title", status: "Ready", body: "Body", todos: [{ text: "a", done: false }], assignees: [], labels: [], meta: {} };
     const md = renderSingleStoryMarkdown(s);
-    assert.ok(md.includes("## Story: Test Title"));
+    assert.ok(md.includes("## Story: STORY-123 Test Title"));
     assert.ok(md.includes("### Story ID"));
     assert.ok(md.includes("STORY-123"));
     assert.ok(md.includes("### Status"));
@@ -17,6 +17,6 @@ describe("renderer", () => {
   });
   it("fallback file name when no id", () => {
     const s: Story = { storyId: "", title: "Hello World!", status: "Backlog", body: "", todos: [], assignees: [], labels: [], meta: {} };
-    assert.equal(preferredStoryFileName(s), "mdsync-hello-world.md");
+    assert.equal(preferredStoryFileName(s), "hello-world.md");
   });
 });

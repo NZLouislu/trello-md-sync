@@ -71,8 +71,20 @@ export function parseMarkdownToStories(md: string, options: ParseOptions = {}): 
 }
 
 function parseStorySection(lines: string[], start: number, options: ParseOptions): { story: Story; nextIndex: number } {
-  const title = (lines[start].match(sectionHeaderRe)![1] || "").trim();
+  const rawTitle = (lines[start].match(sectionHeaderRe)![1] || "").trim();
   let storyId = "";
+  let title = rawTitle;
+  const storyMatch = rawTitle.match(/^(STORY-[^\s]+)(?:\s+(.+))?$/i);
+  if (storyMatch) {
+    storyId = storyMatch[1].trim();
+    title = (storyMatch[2] || "").trim();
+  } else {
+    const idMatch = rawTitle.match(/^ID:\s*([^\s]+)(?:\s+(.+))?$/i);
+    if (idMatch) {
+      storyId = idMatch[1].trim();
+      title = (idMatch[2] || "").trim();
+    }
+  }
   let status = "";
 
   let bodyLines: string[] = [];
@@ -97,7 +109,7 @@ function parseStorySection(lines: string[], start: number, options: ParseOptions
     }
 
     if (section.includes("story id")) {
-      if (l.trim()) storyId = l.trim();
+      if (l.trim() && !storyId) storyId = l.trim();
     } else if (section.includes("status")) {
       if (l.trim()) status = l.trim();
     } else if (section.includes("description")) {
@@ -122,9 +134,9 @@ function parseStorySection(lines: string[], start: number, options: ParseOptions
     context: title || status
   });
   if (!storyId && options.requireStoryId) {
-    throw new MarkdownParseError("Story ID is required", "STORY_ID_MISSING", { file: options.filePath, line: start + 1 }, { title });
+    throw new MarkdownParseError("Story ID is required (expect \"STORY-XXXX\")", "STORY_ID_MISSING", { file: options.filePath, line: start + 1 }, { title });
   }
-  const finalId = storyId || slugId(title);
+  const finalId = storyId;
 
   const story: Story = {
     storyId: finalId,
@@ -147,8 +159,20 @@ function parseStorySection(lines: string[], start: number, options: ParseOptions
 }
 
 function parseBlockStory(lines: string[], start: number, column: string, options: ParseOptions): { story: Story; nextIndex: number } {
-  const title = (lines[start].match(blockStoryRe)![1] || "").trim();
+  const rawTitle = (lines[start].match(blockStoryRe)![1] || "").trim();
   let storyId = "";
+  let title = rawTitle;
+  const storyMatch = rawTitle.match(/^(STORY-[^\s]+)(?:\s+(.+))?$/i);
+  if (storyMatch) {
+    storyId = storyMatch[1].trim();
+    title = (storyMatch[2] || "").trim();
+  } else {
+    const idMatch = rawTitle.match(/^ID:\s*([^\s]+)(?:\s+(.+))?$/i);
+    if (idMatch) {
+      storyId = idMatch[1].trim();
+      title = (idMatch[2] || "").trim();
+    }
+  }
 
   let bodyLines: string[] = [];
   const todos: Todo[] = [];
@@ -215,9 +239,9 @@ function parseBlockStory(lines: string[], start: number, column: string, options
     context: title || column
   });
   if (!storyId && options.requireStoryId) {
-    throw new MarkdownParseError("Story ID is required", "STORY_ID_MISSING", { file: options.filePath, line: start + 1 }, { title });
+    throw new MarkdownParseError("Story ID is required (expect \"STORY-XXXX\")", "STORY_ID_MISSING", { file: options.filePath, line: start + 1 }, { title });
   }
-  const finalId = storyId || slugId(title);
+  const finalId = storyId;
 
   const story: Story = {
     storyId: finalId,
@@ -254,11 +278,6 @@ function splitCsv(val: string): string[] {
 function splitCsvLine(line: string): string[] {
   if (!line.trim()) return [];
   return splitCsv(line);
-}
-
-function slugId(title: string): string {
-  const s = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return s ? `mdsync-${s}` : `mdsync-untitled`;
 }
 
 function normalizeAndMapStatus(

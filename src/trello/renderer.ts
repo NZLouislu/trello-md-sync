@@ -1,11 +1,23 @@
 import type { Story } from "./types";
+import { storyFileName, formatStoryName } from "./story-format";
+
 export function renderSingleStoryMarkdown(s: Story): string {
   const lines: string[] = [];
-  lines.push(`## Story: ${s.title}`);
+  const id = (s.storyId || "").trim();
+  const title = (s.title || "").trim();
+  
+  const displayName = formatStoryName(id, title);
+  if (displayName) lines.push(`## Story: ${displayName}`);
+  else lines.push("## Story:");
+  
   lines.push("");
-  lines.push("### Story ID");
-  lines.push(s.storyId || "");
-  lines.push("");
+  
+  if (id) {
+    lines.push("### Story ID");
+    lines.push(id);
+    lines.push("");
+  }
+  
   lines.push("### Status");
   lines.push(s.status || "Backlog");
   lines.push("");
@@ -20,11 +32,9 @@ export function renderSingleStoryMarkdown(s: Story): string {
     }
   }
   lines.push("");
-  return lines.join("\n").replace(/\n+$/,"") + "\n";
+  return lines.join("\n").replace(/\n+$/, "") + "\n";
 }
+
 export function preferredStoryFileName(s: Story): string {
-  const id = (s.storyId || "").trim();
-  const titleSlug = (s.title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  if (id) return `${id}-${titleSlug}.md`;
-  return `mdsync-${titleSlug}.md`;
+  return storyFileName(s);
 }

@@ -1,6 +1,6 @@
 {
   "name": "trello-md-sync",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A tool to sync Trello with local markdown files",
   "main": "dist/index.js",
   "author": "Louis Lu, NZLouis <nzlouis.com@gmail.com> (https://blog.nzlouis.com)",
@@ -22,6 +22,7 @@
     "clean": "rimraf dist",
     "test": "nyc mocha -r ts-node/register \"src/**/__tests__/**/*.test.ts\" \"src/testing/**/*.test.ts\"",
     "lint": "prettier --check .",
+    "verify": "npm test && npm run build",
     "md": "set MD_INPUT_DIR=./examples/md&& set MD_OUTPUT_DIR=./examples/items&& node dist/src/trello/md-to-trello.js",
     "md:logs": "set VERBOSE=1&& npm run md",
     "md:json": "set LOG_JSON=1&& npm run md",

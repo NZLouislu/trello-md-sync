@@ -43,6 +43,15 @@ function parseBooleanEnv(value: string | undefined): boolean | undefined {
   return parseBoolean(value as FlagValue);
 }
 
+function parseJsonOrString<T>(value: string | undefined): T | string | undefined {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return value;
+  }
+}
+
 function parseNumber(input: FlagValue | undefined, envValue: string | undefined): number | undefined {
   if (typeof input === "string" && input.trim()) {
     const parsed = Number(input);
@@ -72,6 +81,11 @@ async function main() {
   const inputDirFlag = typeof flags["input"] === "string" ? flags["input"] as string : undefined;
   const outputDirFlag = typeof flags["output"] === "string" ? flags["output"] as string : undefined;
   const checklistFlag = typeof flags["checklist"] === "string" ? flags["checklist"] as string : undefined;
+  const priorityMapFlag = typeof flags["priority-label-map"] === "string" ? flags["priority-label-map"] as string : undefined;
+  const labelTokenMapFlag = typeof flags["label-token-map"] === "string" ? flags["label-token-map"] as string : undefined;
+  const ensureLabelsFlag = parseBoolean(flags["ensure-labels"]);
+  const requiredLabelsFlag = typeof flags["required-labels"] === "string" ? flags["required-labels"] as string : undefined;
+  const memberAliasMapFlag = typeof flags["member-alias-map"] === "string" ? flags["member-alias-map"] as string : undefined;
   const concurrencyValue = parseNumber(flags["concurrency"], process.env.MDSYNC_CONCURRENCY);
 
   const envLogLevel = (process.env.LOG_LEVEL || "").toLowerCase() === "debug" ? "debug" : "info";
@@ -96,6 +110,22 @@ async function main() {
     mdInputDir: inputDirFlag ?? process.env.MD_INPUT_DIR,
     mdOutputDir: outputDirFlag ?? process.env.MD_OUTPUT_DIR,
     concurrency: concurrencyValue,
+    priorityLabelMap: parseJsonOrString<Record<string, string>>(priorityMapFlag as string | undefined ?? process.env.PRIORITY_LABEL_MAP_JSON) as Record<string, string> | string | undefined,
+    labelTokenMap: parseJsonOrString<Record<string, string>>(labelTokenMapFlag as string | undefined ?? process.env.LABEL_TOKEN_MAP_JSON) as Record<string, string> | string | undefined,
+    ensureLabels: ensureLabelsFlag ?? parseBooleanEnv(process.env.MDSYNC_ENSURE_LABELS) ?? false,
+    requiredLabels: (() => {
+      const raw = requiredLabelsFlag as string | undefined ?? process.env.REQUIRED_LABELS;
+      if (!raw) return undefined;
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+        return raw.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      return undefined;
+    })(),
+    memberAliasMap: parseJsonOrString<Record<string, string>>(memberAliasMapFlag as string | undefined ?? process.env.MEMBER_ALIAS_MAP_JSON) as Record<string, string> | string | undefined,
   };
 
   try {
@@ -105,6 +135,7 @@ async function main() {
       console.log(JSON.stringify({ kind: "md-to-trello", summary, logs: result.logs }));
     } else {
       console.log("md-to-trello summary:", summary);
+      console.log(`Processed ${summary.processedFiles} markdown files, parsed ${summary.processedStories} stories, rendered ${summary.renderedFiles} local files.`);
       if (result.result.errors.length) {
         for (const error of result.result.errors) {
           console.error("md-to-trello error:", error);

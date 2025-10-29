@@ -7,7 +7,6 @@ describe("examples md-to-trello", () => {
     process.env.TRELLO_KEY = "test";
     process.env.TRELLO_TOKEN = "test";
     process.env.TRELLO_BOARD_ID = "test";
-    process.env.TRELLO_STORY_ID_CUSTOM_FIELD_ID = "68e86313aa11a1da92aaa998";
     process.env.MD_INPUT_DIR = "./md";
     process.env.MD_OUTPUT_DIR = "./items";
     delete process.env.LOG_LEVEL;
@@ -17,6 +16,7 @@ describe("examples md-to-trello", () => {
     assert.ok(typeof res.result.created === "number");
     assert.ok(typeof res.result.updated === "number");
     assert.ok(typeof res.result.failed === "number");
+    assert.ok((res.logs || []).some((l: string) => l.includes("STORY-")));
   });
 
   it("runs in debug mode (dry-run) without throwing", async () => {
@@ -25,7 +25,6 @@ describe("examples md-to-trello", () => {
     process.env.TRELLO_KEY = "test";
     process.env.TRELLO_TOKEN = "test";
     process.env.TRELLO_BOARD_ID = "test";
-    process.env.TRELLO_STORY_ID_CUSTOM_FIELD_ID = "68e86313aa11a1da92aaa998";
     process.env.LOG_LEVEL = "debug";
     const res = await mod.main();
     assert.ok(res);

@@ -2,10 +2,43 @@ import fs from "fs/promises";
 import path from "path";
 import { parseMarkdownToStories } from "./markdown-parser";
 import { renderSingleStoryMarkdown, preferredStoryFileName } from "./renderer";
+import { formatLegacyStoryName, formatStoryName, parseFormattedStoryName } from "./story-format";
+
 import { TrelloProvider } from "./provider";
 import type { Story } from "./types";
 
 type ChecklistItem = { text: string; checked: boolean };
+type MdToTrelloDryRunSummary = {
+  created: string[];
+  updated: string[];
+  moved: string[];
+  checklistChanges: string[];
+  priorityWarnings: string[];
+  missingLabels: string[];
+  aliasWarnings: string[];
+  stats: {
+    prioritiesWithMappings: number;
+    prioritiesMissingLabels: number;
+    storiesWithMissingLabels: number;
+    storiesWithAliasIssues: number;
+  };
+};
+
+type MdToTrelloResultPayload = {
+  result: {
+    created: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+    errors: { storyId: string; title: string; message: string }[];
+    processedFiles: number;
+    processedStories: number;
+    renderedFiles: number;
+  };
+  logs: string[];
+  dryRunSummary?: MdToTrelloDryRunSummary;
+  writeLocalFiles?: string[];
+};
 
 type TrelloProviderLike = {
   getLists(boardId: string): Promise<{ id: string; name: string }[]>;
@@ -21,9 +54,8 @@ type TrelloProviderLike = {
   setCardLabels(cardId: string, labelIds: string[]): Promise<void>;
   resolveMemberIds(boardId: string, names: string[]): Promise<{ ids: string[]; missing: string[] }>;
   setCardMembers(cardId: string, memberIds: string[]): Promise<void>;
+  ensureLabels?(boardId: string, labels: { name: string; color?: string }[], options?: { create?: boolean }): Promise<{ created: string[]; existing: string[]; missing: string[] }>;
 };
-
-
 
 export interface MdToTrelloConfig {
   trelloKey: string;
@@ -42,9 +74,12 @@ export interface MdToTrelloConfig {
   strictStatus?: boolean;
   concurrency?: number;
   provider?: TrelloProviderLike;
+  ensureLabels?: boolean;
+  requiredLabels?: string[];
+  memberAliasMap?: Record<string, string> | string;
+  priorityLabelMap?: Record<string, string> | string;
+  labelTokenMap?: Record<string, string> | string;
 }
-
-
 
 async function readAllMarkdown(dir: string): Promise<{ file: string; content: string }[]> {
   const ents = await fs.readdir(dir);
@@ -57,8 +92,6 @@ async function readAllMarkdown(dir: string): Promise<{ file: string; content: st
   }
   return out;
 }
-
-
 
 async function ensureRenderedOut(stories: Story[], outDir: string): Promise<string[]> {
   await fs.mkdir(outDir, { recursive: true });
@@ -94,6 +127,7 @@ type StoryPlan = {
   hasChanges: boolean;
   currentListName: string;
   targetListName: string;
+  expectedName: string;
 };
 
 type CardLookup = {
@@ -157,65 +191,144 @@ function sameSet(a: string[], b: string[]): boolean {
 }
 
 function getCardStoryIdFromCard(card: any, storyIdField?: string): string {
-  if (!storyIdField) return "";
-  if (!Array.isArray(card?.customFieldItems)) return "";
-  for (const it of card.customFieldItems) {
-    if (it?.idCustomField === storyIdField) {
-      const v = it?.value;
-      if (v?.text) return String(v.text);
-      if (v?.number) return String(v.number);
-      if (v?.checked) return String(v.checked);
+  if (storyIdField && Array.isArray(card?.customFieldItems)) {
+    for (const it of card.customFieldItems) {
+      if (it?.idCustomField === storyIdField) {
+        const v = it?.value;
+        if (v?.text) return String(v.text);
+        if (v?.number) return String(v.number);
+        if (v?.checked) return String(v.checked);
+      }
     }
   }
+  const parsed = parseFormattedStoryName(String(card?.name || ""));
+  if (parsed.storyId) return parsed.storyId;
   return "";
 }
 
 function createCardLookup(cards: any[], storyIdField?: string): CardLookup {
-  const byStoryId = new Map<string, any>();
+  const byStoryId = new Map<string, any | any[]>();
   const byTitle = new Map<string, any[]>();
-  for (const card of cards) {
-    const sid = getCardStoryIdFromCard(card, storyIdField);
-    if (sid) byStoryId.set(String(sid), card);
-    const titleKey = String(card?.name || "").trim().toLowerCase();
-    if (titleKey) {
-      const arr = byTitle.get(titleKey) || [];
-      arr.push(card);
-      byTitle.set(titleKey, arr);
+  const cardTitleKeys = new Map<any, string[]>();
+
+  const addCardToTitleIndex = (card: any, key: string) => {
+    if (!key) return;
+    const arr = byTitle.get(key) || [];
+    arr.push(card);
+    byTitle.set(key, arr);
+  };
+
+  const normalizeTitleKey = (value: string): string => value.trim().toLowerCase();
+
+  const recordStoryId = (id: string, card: any) => {
+    if (!id) return;
+    const key = id.trim();
+    if (!key) return;
+    const existing = byStoryId.get(key);
+    if (!existing) {
+      byStoryId.set(key, card);
+      return;
     }
+    if (Array.isArray(existing)) {
+      existing.push(card);
+      return;
+    }
+    byStoryId.set(key, [existing, card]);
+  };
+
+  const collectTitleKeysForCard = (card: any): string[] => {
+    const keys = new Set<string>();
+    const rawName = String(card?.name || "");
+    const normalizedRaw = normalizeTitleKey(rawName);
+    if (normalizedRaw) keys.add(normalizedRaw);
+    const parsed = parseFormattedStoryName(rawName);
+    const formatted = formatStoryName(parsed.storyId, parsed.title);
+    if (formatted) {
+      const formattedKey = normalizeTitleKey(formatted);
+      if (formattedKey) keys.add(formattedKey);
+    }
+    if (parsed.title) {
+      const titleKey = normalizeTitleKey(parsed.title);
+      if (titleKey) keys.add(titleKey);
+    }
+    return Array.from(keys);
+  };
+
+  for (const card of cards) {
+    const sidFromField = getCardStoryIdFromCard(card, storyIdField);
+    recordStoryId(sidFromField, card);
+    const parsed = parseFormattedStoryName(String(card?.name || ""));
+    if (parsed.storyId && parsed.storyId !== sidFromField) recordStoryId(parsed.storyId, card);
+    const titleKeys = collectTitleKeysForCard(card);
+    cardTitleKeys.set(card, titleKeys);
+    for (const key of titleKeys) addCardToTitleIndex(card, key);
   }
-  const take = (map: Map<string, any>, key: string): any | null => {
+
+  const removeCardFromTitleIndex = (card: any) => {
+    const keys = cardTitleKeys.get(card) || [];
+    for (const key of keys) {
+      const arr = byTitle.get(key);
+      if (!arr) continue;
+      const next = arr.filter((c) => c !== card);
+      if (next.length) byTitle.set(key, next);
+      else byTitle.delete(key);
+    }
+    cardTitleKeys.delete(card);
+  };
+
+  const detachStoryIdEntry = (card: any) => {
+    const parsed = parseFormattedStoryName(String(card?.name || ""));
+    const candidateIds = new Set<string>();
+    const customId = getCardStoryIdFromCard(card, storyIdField);
+    if (customId) candidateIds.add(customId.trim());
+    if (parsed.storyId) candidateIds.add(parsed.storyId.trim());
+    for (const id of Array.from(candidateIds)) {
+      const entry = byStoryId.get(id);
+      if (!entry) continue;
+      if (Array.isArray(entry)) {
+        const filtered = entry.filter((c) => c !== card);
+        if (!filtered.length) byStoryId.delete(id);
+        else if (filtered.length === 1) byStoryId.set(id, filtered[0]);
+        else byStoryId.set(id, filtered);
+      } else if (entry === card) {
+        byStoryId.delete(id);
+      }
+    }
+  };
+
+  const takeFromStoryId = (key: string): any | null => {
     if (!key) return null;
-    const val = map.get(key);
+    const val = byStoryId.get(key);
     if (!val) return null;
-    map.delete(key);
+    if (Array.isArray(val)) {
+      if (val.length !== 1) {
+        throw new Error(`Multiple cards share story id ${key}`);
+      }
+      const card = val[0];
+      byStoryId.delete(key);
+      removeCardFromTitleIndex(card);
+      return card;
+    }
+    byStoryId.delete(key);
+    removeCardFromTitleIndex(val);
     return val;
   };
+
   return {
     takeByStoryId(id: string) {
-      const key = String(id || "");
-      const card = take(byStoryId, key);
-      if (card) {
-        const titleKey = String(card?.name || "").trim().toLowerCase();
-        if (titleKey && byTitle.has(titleKey)) {
-          const arr = byTitle.get(titleKey)!.filter((c) => c !== card);
-          if (arr.length) byTitle.set(titleKey, arr);
-          else byTitle.delete(titleKey);
-        }
-      }
-      return card || null;
+      const key = String(id || "").trim();
+      return takeFromStoryId(key);
     },
     takeByTitle(title: string) {
-      const key = String(title || "").trim().toLowerCase();
+      const key = normalizeTitleKey(String(title || ""));
       if (!key) return null;
       const arr = byTitle.get(key);
       if (!arr || !arr.length) return null;
       const card = arr.shift()!;
       if (arr.length) byTitle.set(key, arr);
       else byTitle.delete(key);
-      if (card) {
-        const sid = getCardStoryIdFromCard(card, storyIdField);
-        if (sid) byStoryId.delete(String(sid));
-      }
+      detachStoryIdEntry(card);
+      removeCardFromTitleIndex(card);
       return card;
     }
   };
@@ -233,6 +346,10 @@ async function buildStoryPlan(
     listNameById: Record<string, string>;
     lookup: CardLookup;
     warn: (msg: string) => void;
+    collectPriority: (value: string | undefined, mapped: boolean) => void;
+    collectLabelMiss: (storyId: string | undefined, labels: string[]) => void;
+    collectAliasMiss: (storyId: string | undefined, aliases: string[]) => void;
+    memberAliasMap?: Record<string, string> | string;
   }
 ): Promise<StoryPlan> {
   const statusKey = normalizeStatusKey(story.status);
@@ -242,14 +359,26 @@ async function buildStoryPlan(
     throw new Error(`Unmapped status for story ${story.storyId || story.title}`);
   }
 
+  const expectedCardName = formatStoryName(story.storyId, story.title);
   let existing: any | null = null;
   if (story.storyId) existing = ctx.lookup.takeByStoryId(story.storyId);
-  if (!existing) existing = ctx.lookup.takeByTitle(story.title);
+  if (!existing && expectedCardName) existing = ctx.lookup.takeByTitle(expectedCardName);
+  if (!existing && story.storyId) {
+    const legacyName = formatLegacyStoryName(story.storyId, story.title);
+    if (legacyName) existing = ctx.lookup.takeByTitle(legacyName);
+  }
+  if (!existing && story.title) existing = ctx.lookup.takeByTitle(story.title);
 
   const currentListName = existing ? (ctx.listNameById[existing.idList] || "") : "";
   const create = !existing;
 
-  const updateContent = existing ? (String(existing.name || "") !== story.title || String(existing.desc || "") !== (story.body || "")) : false;
+  const desiredName = expectedCardName || story.title || "";
+  const normalizedDesiredName = desiredName.trim().toLowerCase();
+  const normalizedExistingName = String(existing?.name || "").trim().toLowerCase();
+  const nameNeedsUpdate = existing
+    ? (desiredName ? normalizedExistingName !== normalizedDesiredName : normalizedExistingName !== (story.title || "").trim().toLowerCase())
+    : false;
+  const updateContent = existing ? (nameNeedsUpdate || String(existing.desc || "") !== (story.body || "")) : false;
   const move = existing ? (String(currentListName || "").toLowerCase() !== String(targetListName || "").toLowerCase()) : false;
 
   const desiredChecklist = storyTodosToChecklist(story);
@@ -257,7 +386,17 @@ async function buildStoryPlan(
   const checklistChanged = create ? desiredChecklist.length > 0 : !checklistEqual(currentChecklist, desiredChecklist);
 
   const desiredLabelNames = (story.labels || []).map(sanitizeValue).filter(Boolean);
-  const desiredMemberNames = (story.assignees || []).map(sanitizeValue).filter(Boolean);
+  let desiredMemberNames = (story.assignees || []).map(sanitizeValue).filter(Boolean);
+
+  // Apply member alias mapping if configured
+  if (ctx.memberAliasMap) {
+    const aliasMap = typeof ctx.memberAliasMap === 'string'
+      ? (() => { try { return JSON.parse(ctx.memberAliasMap as string); } catch { return {}; } })()
+      : ctx.memberAliasMap;
+    desiredMemberNames = desiredMemberNames.map(name => aliasMap[name] || name);
+  }
+
+  const priorityValue = sanitizeValue(story.meta?.priority || "");
 
   const labelResult = desiredLabelNames.length
     ? await ctx.provider.resolveLabelIds(ctx.boardId, desiredLabelNames)
@@ -266,8 +405,15 @@ async function buildStoryPlan(
     ? await ctx.provider.resolveMemberIds(ctx.boardId, desiredMemberNames)
     : { ids: [] as string[], missing: [] as string[] };
 
-  if (labelResult.missing.length) ctx.warn(`[warn] missing labels for ${story.storyId || story.title}: ${labelResult.missing.join(", ")}`);
-  if (memberResult.missing.length) ctx.warn(`[warn] missing members for ${story.storyId || story.title}: ${memberResult.missing.join(", ")}`);
+  if (labelResult.missing.length) {
+    ctx.warn(`[warn] missing labels for ${story.storyId || story.title}: ${labelResult.missing.join(", ")}`);
+    ctx.collectLabelMiss(story.storyId, labelResult.missing);
+  }
+  if (memberResult.missing.length) {
+    ctx.warn(`[warn] missing members for ${story.storyId || story.title}: ${memberResult.missing.join(", ")}`);
+    ctx.collectAliasMiss(story.storyId, memberResult.missing);
+  }
+  if (priorityValue) ctx.collectPriority(priorityValue, false);
 
   const existingLabelIds = extractLabelIds(existing);
   const existingMemberIds = extractMemberIds(existing);
@@ -287,29 +433,21 @@ async function buildStoryPlan(
     members: { ids: memberResult.ids, missing: memberResult.missing, changed: membersChanged },
     hasChanges,
     currentListName,
-    targetListName
+    targetListName,
+    expectedName: expectedCardName
   };
 }
 
 export async function mdToTrello(
   cfg: MdToTrelloConfig
-): Promise<{
-  result: {
-    created: number;
-    updated: number;
-    skipped: number;
-    failed: number;
-    errors: { storyId: string; title: string; message: string }[];
-  };
-  logs: string[];
-}> {
+): Promise<MdToTrelloResultPayload> {
   const logs: string[] = [];
   const projectRoot = cfg.projectRoot;
   if (!projectRoot) {
     const msg = "Please specify the markdown files path (set opts.projectRoot or args.projectRoot).";
     console.error(msg);
     logs.push(msg);
-    return { result: { created: 0, updated: 0, skipped: 0, failed: 1, errors: [{ storyId: "", title: "(init)", message: msg }] }, logs };
+    return { result: { created: 0, updated: 0, skipped: 0, failed: 1, errors: [{ storyId: "", title: "(init)", message: msg }], processedFiles: 0, processedStories: 0, renderedFiles: 0 }, logs };
   }
 
   const key = cfg.trelloKey;
@@ -328,7 +466,7 @@ export async function mdToTrello(
     : path.resolve(projectRoot, "examples/items");
   const checklistName = cfg.checklistName || "Todos";
 
-  const fallbackMap: Record<string,string> = {
+  const fallbackMap: Record<string, string> = {
     backlog: "Backlog",
     ready: "Ready",
     doing: "Doing",
@@ -338,12 +476,12 @@ export async function mdToTrello(
     done: "Done",
     todo: "Backlog"
   };
-  let listMapBase: Record<string,string> = fallbackMap;
+  let listMapBase: Record<string, string> = fallbackMap;
   if (cfg.trelloListMapJson) {
     if (typeof cfg.trelloListMapJson === "string") {
       try { listMapBase = JSON.parse(cfg.trelloListMapJson as string); } catch { listMapBase = fallbackMap; }
     } else {
-      listMapBase = cfg.trelloListMapJson as Record<string,string>;
+      listMapBase = cfg.trelloListMapJson as Record<string, string>;
     }
   }
   const extendedMap = extendStatusMap(listMapBase);
@@ -446,7 +584,7 @@ export async function mdToTrello(
     failed = 0;
   const errors: { storyId: string; title: string; message: string }[] = [];
   const lists = await provider.getLists(boardId);
-  const listNameById: Record<string,string> = {};
+  const listNameById: Record<string, string> = {};
   for (const l of lists) listNameById[l.id] = l.name;
 
   const warn = (msg: string) => {
@@ -456,6 +594,31 @@ export async function mdToTrello(
 
   const boardCards = await provider.listItems(boardId);
   const lookup = createCardLookup(boardCards, resolvedStoryIdField);
+
+  const priorityWarnings: string[] = [];
+  const missingLabels: string[] = [];
+  const aliasWarnings: string[] = [];
+  const priorityStats = {
+    prioritiesWithMappings: 0,
+    prioritiesMissingLabels: 0
+  };
+  const aliasIssues = new Set<string>();
+
+  const dryRunSummary: MdToTrelloDryRunSummary = {
+    created: [],
+    updated: [],
+    moved: [],
+    checklistChanges: [],
+    priorityWarnings,
+    missingLabels,
+    aliasWarnings,
+    stats: {
+      prioritiesWithMappings: 0,
+      prioritiesMissingLabels: 0,
+      storiesWithMissingLabels: 0,
+      storiesWithAliasIssues: 0
+    }
+  };
 
   const plans: StoryPlan[] = [];
   for (const story of allStories) {
@@ -468,10 +631,39 @@ export async function mdToTrello(
       storyIdField: resolvedStoryIdField,
       listNameById,
       lookup,
-      warn
+      warn,
+      collectPriority: (priority) => {
+        if (!priority) return;
+        // Check if priority maps to a label
+        const isMapped = cfg.priorityLabelMap ? (() => {
+          const map = typeof cfg.priorityLabelMap === 'string'
+            ? (() => { try { return JSON.parse(cfg.priorityLabelMap as string); } catch { return {}; } })()
+            : cfg.priorityLabelMap;
+          return !!map && !!map[priority];
+        })() : false;
+        
+        if (isMapped) priorityStats.prioritiesWithMappings++;
+        else priorityStats.prioritiesMissingLabels++;
+        if (!isMapped) priorityWarnings.push(priority);
+      },
+      collectLabelMiss(storyId, labels) {
+        if (!labels.length) return;
+        missingLabels.push(`${storyId || "(no-id)"}:${labels.join("|")}`);
+        dryRunSummary.stats.storiesWithMissingLabels++;
+      },
+      collectAliasMiss(storyId, aliases) {
+        if (!aliases.length) return;
+        aliasWarnings.push(`${storyId || "(no-id)"}:${aliases.join("|")}`);
+        aliasIssues.add(storyId || "(no-id)");
+      },
+      memberAliasMap: cfg.memberAliasMap
     });
     plans.push(plan);
   }
+
+  dryRunSummary.stats.prioritiesWithMappings = priorityStats.prioritiesWithMappings;
+  dryRunSummary.stats.prioritiesMissingLabels = priorityStats.prioritiesMissingLabels;
+  dryRunSummary.stats.storiesWithAliasIssues = aliasIssues.size;
 
   const createdPlans = plans.filter(p => p.create);
   const updatedPlans = plans.filter(p => !p.create && (p.updateContent || p.labels.changed || p.members.changed));
@@ -479,12 +671,30 @@ export async function mdToTrello(
   const checklistPlans = plans.filter(p => p.checklist.changed);
   const skippedPlans = plans.filter(p => !p.hasChanges);
 
-  const dryRunSummary = {
-    created: createdPlans.map(p => p.story.storyId || p.story.title),
-    updated: updatedPlans.map(p => p.story.storyId || p.story.title),
-    moved: movedPlans.map(p => p.story.storyId || p.story.title),
-    checklistChanges: checklistPlans.map(p => p.story.storyId || p.story.title)
-  };
+  dryRunSummary.created = createdPlans.map(p => p.story.storyId || p.story.title);
+  dryRunSummary.updated = updatedPlans.map(p => p.story.storyId || p.story.title);
+  dryRunSummary.moved = movedPlans.map(p => p.story.storyId || p.story.title);
+  dryRunSummary.checklistChanges = checklistPlans.map(p => p.story.storyId || p.story.title);
+
+  // Ensure required labels are created if ensureLabels is enabled
+  if (cfg.ensureLabels && cfg.requiredLabels && cfg.requiredLabels.length > 0) {
+    const allLabelNames = new Set<string>();
+    for (const story of allStories) {
+      if (story.labels) {
+        for (const label of story.labels) {
+          if (label) allLabelNames.add(sanitizeValue(label));
+        }
+      }
+    }
+    for (const req of cfg.requiredLabels) {
+      if (req) allLabelNames.add(sanitizeValue(req));
+    }
+    const labelsToEnsure = Array.from(allLabelNames).filter(Boolean).map(name => ({ name }));
+    if (labelsToEnsure.length > 0 && provider.ensureLabels) {
+      vlog("[init] ensuring labels:", labelsToEnsure.map(l => l.name).join(", "));
+      await provider.ensureLabels(boardId, labelsToEnsure);
+    }
+  }
 
   if (dryRun) {
     vlog("[dry-run] stories=", allStories.length);
@@ -502,9 +712,14 @@ export async function mdToTrello(
         updated: updatedPlans.length,
         skipped: skippedPlans.length,
         failed: 0,
-        errors: []
+        errors: [],
+        processedFiles: mdFiles.length,
+        processedStories: allStories.length,
+        renderedFiles: outFiles.length
       },
-      logs
+      logs,
+      dryRunSummary,
+      writeLocalFiles: outFiles
     };
   }
 
@@ -527,13 +742,15 @@ export async function mdToTrello(
     try {
       vlog(`mdsync: processing "${story.title}" id=${story.storyId} status=${story.status}`);
       let cardId: string | undefined = plan.existing?.id ? String(plan.existing.id) : undefined;
+      const desiredCardName = plan.expectedName || story.title;
 
       if (plan.create) {
         const targetStatus = plan.targetListName || story.status;
-        const card = await provider.createItem(boardId, story.title, story.body, targetStatus);
+        const card = await provider.createItem(boardId, desiredCardName, story.body, targetStatus);
         cardId = String(card?.id || "");
         if (!cardId) throw new Error("createItem did not return card id");
         created++;
+
         createdItems.push(`${summaryId} | ${story.title} | ${targetStatus}`);
         if (resolvedStoryIdField && story.storyId) {
           await provider.setStoryId(cardId, story.storyId);
@@ -550,7 +767,7 @@ export async function mdToTrello(
       const updatesPerformed: string[] = [];
 
       if (plan.updateContent) {
-        await provider.updateItem(cardId, story.title, story.body);
+        await provider.updateItem(cardId, desiredCardName, story.body);
         updatesPerformed.push("content");
       }
 
@@ -648,9 +865,14 @@ export async function mdToTrello(
       updated,
       skipped: totalSkipped,
       failed,
-      errors
+      errors,
+      processedFiles: mdFiles.length,
+      processedStories: allStories.length,
+      renderedFiles: outFiles.length
     },
-    logs
+    logs,
+    dryRunSummary,
+    writeLocalFiles: outFiles
   };
 }
 
@@ -660,8 +882,11 @@ export function makeMdToTrelloSummary(r: {
   skipped: number;
   failed: number;
   errors?: any[];
+  processedFiles: number;
+  processedStories: number;
+  renderedFiles: number;
 }) {
-  return { created: r.created, updated: r.updated, skipped: r.skipped, failed: r.failed, errors: r.errors ?? [] };
+  return { created: r.created, updated: r.updated, skipped: r.skipped, failed: r.failed, errors: r.errors ?? [], processedFiles: r.processedFiles, processedStories: r.processedStories, renderedFiles: r.renderedFiles };
 }
 
 if (require.main === module) {

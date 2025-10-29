@@ -21,9 +21,9 @@ describe("trello card mapping", () => {
     assert.equal(s.todos[1].done, true);
   });
 
-  it("falls back to slug id when no custom field present", () => {
+  it("falls back to empty storyId when no custom field present", () => {
     const card = { name: "Hello World", desc: "", idListName: "Backlog" };
     const s = mapCardToStory(card as any, "Todos");
-    assert.ok(s.storyId.startsWith("mdsync-hello-world"));
+    assert.equal(s.storyId, "");
   });
 });

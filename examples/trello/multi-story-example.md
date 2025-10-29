@@ -1,6 +1,6 @@
 ## Backlog
 
-- Story: Establish Trello-only environment and path strategy
+- Story: STORY-01 Establish Trello-only environment and path strategy
 id: STORY-01
 description: As a maintainer, I want a Trello-only environment configuration and unified path strategy so that runs are reliable and portable across machines.
 acceptance_criteria:
@@ -11,7 +11,7 @@ priority: p1
 labels: [trello-md-sync, env, docs]
 assignees: []
 
-- Story: Define unified Story/Todo model and types
+- Story: STORY-02 Define unified Story/Todo model and types
 id: STORY-02
 description: As a developer, I need a unified Story/Todo model so parsing and syncing share one contract.
 acceptance_criteria:
@@ -22,7 +22,7 @@ priority: p1
 labels: [trello-md-sync, core, types]
 assignees: []
 
-- Story: Implement Markdown parser (sections + todo-list blocks)
+- Story: STORY-03 Implement Markdown parser (sections + todo-list blocks)
 id: STORY-03
 description: As a developer, I can parse both single-story sections and multi-story todo-list blocks into Story[] with tolerant fallbacks.
 acceptance_criteria:
@@ -34,7 +34,7 @@ priority: p1
 labels: [trello-md-sync, parsing]
 assignees: []
 
-- Story: Implement Markdown renderer for single-story template
+- Story: STORY-04 Implement Markdown renderer for single-story template
 id: STORY-04
 description: As a developer, I want a consistent renderer for single-story Markdown to ensure stable round-trip with minimal diff.
 acceptance_criteria:
@@ -45,7 +45,7 @@ priority: p2
 labels: [trello-md-sync, rendering]
 assignees: []
 
-- Story: Build TrelloProvider with REST integration and retries
+- Story: STORY-05 Build TrelloProvider with REST integration and retries
 id: STORY-05
 description: As a developer, I can create/update/move cards, manage checklists and custom fields with robust retry and error handling.
 acceptance_criteria:
@@ -57,7 +57,7 @@ priority: p1
 labels: [trello-md-sync, provider, api]
 assignees: []
 
-- Story: Implement md-to-trello sync (batch, concurrency, dry-run)
+- Story: STORY-06 Implement md-to-trello sync (batch, concurrency, dry-run)
 id: STORY-06
 description: As a PO, I can import multiple Stories from Markdown into Trello with concurrency control and a dry-run mode.
 acceptance_criteria:
@@ -69,7 +69,7 @@ priority: p1
 labels: [trello-md-sync, sync, cli]
 assignees: []
 
-- Story: Implement trello-to-md export (single-story files)
+- Story: STORY-07 Implement trello-to-md export (single-story files)
 id: STORY-07
 description: As a developer, I can export Trello cards to single-story Markdown files for focused development and reviews.
 acceptance_criteria:
@@ -80,7 +80,7 @@ priority: p1
 labels: [trello-md-sync, export, cli]
 assignees: []
 
-- Story: Add structured logging and error aggregation
+- Story: STORY-08 Add structured logging and error aggregation
 id: STORY-08
 description: As an operator, I need structured logs and optional JSON output to integrate with pipelines and auditing.
 acceptance_criteria:
@@ -91,7 +91,7 @@ priority: p2
 labels: [trello-md-sync, logging, ops]
 assignees: []
 
-- Story: Test suite for parser/provider/sync (unit + integration)
+- Story: STORY-09 Test suite for parser/provider/sync (unit + integration)
 id: STORY-09
 description: As a QA engineer, I want comprehensive tests to ensure reliability and prevent regressions.
 acceptance_criteria:
@@ -102,7 +102,7 @@ priority: p1
 labels: [trello-md-sync, testing, ci]
 assignees: []
 
-- Story: Prepare docs, examples and release 0.1.0
+- Story: STORY-10 Prepare docs, examples and release 0.1.0
 id: STORY-10
 description: As a maintainer, I want a documented release process and examples so users can start within 15 minutes and we can publish safely.
 acceptance_criteria:

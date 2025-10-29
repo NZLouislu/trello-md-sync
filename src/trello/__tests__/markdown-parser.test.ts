@@ -43,7 +43,7 @@ describe("Trello Markdown parser", () => {
     ].join("\n");
     const stories = parseMarkdownToStories(md, { statusMap: { backlog: "Backlog" }, filePath: "fallback.md" });
     const s = stories[0];
-    if (!s.storyId.startsWith("mdsync-")) throw new Error(`Expected fallback id, got ${s.storyId}`);
+    if (s.storyId !== "") throw new Error(`Expected empty id, got ${s.storyId}`);
     if (s.status !== "Backlog") throw new Error(`Expected mapped Backlog, got ${s.status}`);
     assert.equal((s.meta as any).source.file, "fallback.md");
   });
@@ -68,6 +68,50 @@ describe("Trello Markdown parser", () => {
     }
   });
 
+  it("parses STORY prefixed section title", () => {
+    const md = [
+      "## Story: STORY-321 Improve Sync",
+      "",
+      "### Status",
+      "Ready"
+    ].join("\n");
+    const stories = parseMarkdownToStories(md);
+    assert.equal(stories[0].storyId, "STORY-321");
+    assert.equal(stories[0].title, "Improve Sync");
+  });
+
+  it("parses STORY prefixed block title", () => {
+    const md = [
+      "## Backlog",
+      "- Story: STORY-654 New Flow"
+    ].join("\n");
+    const stories = parseMarkdownToStories(md, { statusMap: { backlog: "Backlog" } });
+    assert.equal(stories[0].storyId, "STORY-654");
+    assert.equal(stories[0].title, "New Flow");
+  });
+
+  it("keeps compatibility with legacy ID section", () => {
+    const md = [
+      "## Story: ID: LEG-1 Old Flow",
+      "",
+      "### Status",
+      "Doing"
+    ].join("\n");
+    const stories = parseMarkdownToStories(md, { statusMap: { doing: "Doing" } });
+    assert.equal(stories[0].storyId, "LEG-1");
+    assert.equal(stories[0].title, "Old Flow");
+  });
+
+  it("keeps compatibility with legacy ID block", () => {
+    const md = [
+      "## Ready",
+      "- Story: ID: LEG-2 Another Flow"
+    ].join("\n");
+    const stories = parseMarkdownToStories(md, { statusMap: { ready: "Ready" } });
+    assert.equal(stories[0].storyId, "LEG-2");
+    assert.equal(stories[0].title, "Another Flow");
+  });
+
   it("throws when status not mapped and strict enabled", () => {
     const md = [
       "## Backlog",
@@ -85,5 +129,22 @@ describe("Trello Markdown parser", () => {
       assert.ok(info.location.line > 0);
       assert.equal(info.details?.status, "Backlog");
     }
+  });
+
+  it("handles mixed STORY and legacy titles in single document", () => {
+    const md = [
+      "## Story: STORY-900 Modern",
+      "",
+      "### Status",
+      "Doing",
+      "",
+      "## Ready",
+      "- Story: ID: LEG-3 Legacy Story"
+    ].join("\n");
+    const stories = parseMarkdownToStories(md, { statusMap: { doing: "Doing", ready: "Ready" } });
+    const modern = stories.find((s) => s.storyId === "STORY-900")!;
+    const legacy = stories.find((s) => s.storyId === "LEG-3")!;
+    assert.equal(modern.title, "Modern");
+    assert.equal(legacy.title, "Legacy Story");
   });
 });
