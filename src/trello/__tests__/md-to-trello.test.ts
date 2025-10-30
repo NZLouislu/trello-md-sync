@@ -65,9 +65,6 @@ describe("md-to-trello matching", () => {
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
         },
-        async setStoryId(_: string, __: string) {
-          throw new Error("should not set custom field in dry-run");
-        },
         async ensureChecklist(_: string, __: any) {
           throw new Error("should not ensure checklist in dry-run");
         },
@@ -147,9 +144,6 @@ describe("md-to-trello matching", () => {
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
         },
-        async setStoryId() {
-          throw new Error("should not set custom field in dry-run");
-        },
         async ensureChecklist() {
           throw new Error("should not ensure checklist in dry-run");
         },
@@ -226,9 +220,6 @@ describe("md-to-trello matching", () => {
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
         },
-        async setStoryId() {
-          throw new Error("should not set custom field in dry-run");
-        },
         async ensureChecklist() {
           throw new Error("should not ensure checklist in dry-run");
         },
@@ -297,9 +288,6 @@ describe("md-to-trello matching", () => {
         },
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
-        },
-        async setStoryId() {
-          throw new Error("should not set custom field in dry-run");
         },
         async ensureChecklist() {
           throw new Error("should not ensure checklist in dry-run");
@@ -377,9 +365,6 @@ describe("md-to-trello matching", () => {
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
         },
-        async setStoryId() {
-          throw new Error("should not set custom field in dry-run");
-        },
         async ensureChecklist() {
           throw new Error("should not ensure checklist in dry-run");
         },
@@ -450,9 +435,6 @@ describe("md-to-trello matching", () => {
         },
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
-        },
-        async setStoryId() {
-          throw new Error("should not set custom field in dry-run");
         },
         async ensureChecklist() {
           throw new Error("should not ensure checklist in dry-run");
@@ -528,9 +510,6 @@ describe("md-to-trello matching", () => {
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
         },
-        async setStoryId() {
-          throw new Error("should not set custom field in dry-run");
-        },
         async ensureChecklist() {
           throw new Error("should not ensure checklist in dry-run");
         },
@@ -602,9 +581,6 @@ describe("md-to-trello matching", () => {
         },
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
-        },
-        async setStoryId() {
-          throw new Error("should not set custom field in dry-run");
         },
         async ensureChecklist() {
           throw new Error("should not ensure checklist in dry-run");

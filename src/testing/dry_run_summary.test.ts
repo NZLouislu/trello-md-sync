@@ -47,9 +47,6 @@ describe("dry-run summary integration", () => {
         async moveItemToStatus() {
           throw new Error("should not move in dry-run");
         },
-        async setStoryId() {
-          throw new Error("should not set custom field in dry-run");
-        },
         async ensureChecklist() {
           throw new Error("should not ensure checklist in dry-run");
         },

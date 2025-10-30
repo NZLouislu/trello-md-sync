@@ -43,12 +43,10 @@ type MdToTrelloResultPayload = {
 type TrelloProviderLike = {
   getLists(boardId: string): Promise<{ id: string; name: string }[]>;
   listItems(boardId: string): Promise<any[]>;
-  getCustomFields(boardId: string): Promise<any[]>;
   findItemByStoryIdOrTitle(boardId: string, storyId: string, title: string): Promise<any | null>;
   createItem(boardId: string, name: string, desc: string, status: string): Promise<any>;
   updateItem(cardId: string, name: string, desc: string): Promise<void>;
   moveItemToStatus(cardId: string, boardId: string, status: string): Promise<void>;
-  setStoryId(cardId: string, value: string): Promise<void>;
   ensureChecklist(cardId: string, items: ChecklistItem[]): Promise<void>;
   resolveLabelIds(boardId: string, names: string[]): Promise<{ ids: string[]; missing: string[] }>;
   setCardLabels(cardId: string, labelIds: string[]): Promise<void>;
@@ -62,7 +60,6 @@ export interface MdToTrelloConfig {
   trelloToken: string;
   trelloBoardId: string;
   trelloListMapJson?: Record<string, string> | string;
-  trelloStoryIdCustomFieldId?: string;
   mdInputDir?: string;
   mdOutputDir?: string;
   checklistName?: string;
@@ -190,23 +187,13 @@ function sameSet(a: string[], b: string[]): boolean {
   return true;
 }
 
-function getCardStoryIdFromCard(card: any, storyIdField?: string): string {
-  if (storyIdField && Array.isArray(card?.customFieldItems)) {
-    for (const it of card.customFieldItems) {
-      if (it?.idCustomField === storyIdField) {
-        const v = it?.value;
-        if (v?.text) return String(v.text);
-        if (v?.number) return String(v.number);
-        if (v?.checked) return String(v.checked);
-      }
-    }
-  }
+function getCardStoryIdFromCard(card: any): string {
   const parsed = parseFormattedStoryName(String(card?.name || ""));
   if (parsed.storyId) return parsed.storyId;
   return "";
 }
 
-function createCardLookup(cards: any[], storyIdField?: string): CardLookup {
+function createCardLookup(cards: any[]): CardLookup {
   const byStoryId = new Map<string, any | any[]>();
   const byTitle = new Map<string, any[]>();
   const cardTitleKeys = new Map<any, string[]>();
@@ -255,7 +242,7 @@ function createCardLookup(cards: any[], storyIdField?: string): CardLookup {
   };
 
   for (const card of cards) {
-    const sidFromField = getCardStoryIdFromCard(card, storyIdField);
+    const sidFromField = getCardStoryIdFromCard(card);
     recordStoryId(sidFromField, card);
     const parsed = parseFormattedStoryName(String(card?.name || ""));
     if (parsed.storyId && parsed.storyId !== sidFromField) recordStoryId(parsed.storyId, card);
@@ -279,7 +266,7 @@ function createCardLookup(cards: any[], storyIdField?: string): CardLookup {
   const detachStoryIdEntry = (card: any) => {
     const parsed = parseFormattedStoryName(String(card?.name || ""));
     const candidateIds = new Set<string>();
-    const customId = getCardStoryIdFromCard(card, storyIdField);
+    const customId = getCardStoryIdFromCard(card);
     if (customId) candidateIds.add(customId.trim());
     if (parsed.storyId) candidateIds.add(parsed.storyId.trim());
     for (const id of Array.from(candidateIds)) {
@@ -342,7 +329,6 @@ async function buildStoryPlan(
     checklistName: string;
     statusMap: Record<string, string>;
     strictStatus: boolean;
-    storyIdField?: string;
     listNameById: Record<string, string>;
     lookup: CardLookup;
     warn: (msg: string) => void;
@@ -539,50 +525,12 @@ export async function mdToTrello(
   vlog("[init] checklistName=", checklistName);
   vlog("[init] listMap(normalized)=", JSON.stringify(extendedMap));
 
-  let storyIdFieldHint = cfg.trelloStoryIdCustomFieldId || "Story ID";
-  let resolvedStoryIdField: string | undefined =
-    storyIdFieldHint && /^[a-f0-9]{8}/i.test(String(storyIdFieldHint)) ? String(storyIdFieldHint) : undefined;
-
   let provider: TrelloProviderLike;
-  if (cfg.provider) {
-    provider = cfg.provider;
-    if (!resolvedStoryIdField && storyIdFieldHint) {
-      try {
-        const fields = await provider.getCustomFields(boardId);
-        const found = Array.isArray(fields)
-          ? fields.find((f: any) => String(f?.name || "").toLowerCase() === String(storyIdFieldHint).toLowerCase())
-          : undefined;
-        resolvedStoryIdField = found?.id ? String(found.id) : undefined;
-      } catch {}
-    }
-  } else {
-    if (!resolvedStoryIdField && storyIdFieldHint) {
-      const probe = new TrelloProvider({
-        auth: { key, token },
-        listMap: extendedMap,
-        checklistName,
-      });
-      try {
-        const fields = await probe.getCustomFields(boardId);
-        const found = Array.isArray(fields)
-          ? fields.find((f: any) => String(f?.name || "").toLowerCase() === String(storyIdFieldHint).toLowerCase())
-          : undefined;
-        resolvedStoryIdField = found?.id ? String(found.id) : undefined;
-      } catch {}
-    }
-    provider = new TrelloProvider({
-      auth: { key, token },
-      listMap: extendedMap,
-      checklistName,
-      storyIdCustomFieldId: resolvedStoryIdField,
-    });
-  }
-
-  if (!resolvedStoryIdField || !/^[a-f0-9]{8}/i.test(resolvedStoryIdField)) {
-    resolvedStoryIdField = undefined;
-  }
-
-  vlog("[init] using storyIdCustomFieldId=", resolvedStoryIdField || "(none)");
+  provider = cfg.provider ?? new TrelloProvider({
+    auth: { key, token },
+    listMap: extendedMap,
+    checklistName,
+  });
 
   const mdFiles = await readAllMarkdown(inputDir);
   if (verbose) {
@@ -625,7 +573,7 @@ export async function mdToTrello(
   };
 
   const boardCards = await provider.listItems(boardId);
-  const lookup = createCardLookup(boardCards, resolvedStoryIdField);
+  const lookup = createCardLookup(boardCards);
 
   const priorityWarnings: string[] = [];
   const missingLabels: string[] = [];
@@ -660,7 +608,6 @@ export async function mdToTrello(
       checklistName,
       statusMap: extendedMap,
       strictStatus,
-      storyIdField: resolvedStoryIdField,
       listNameById,
       lookup,
       warn,
@@ -784,17 +731,10 @@ export async function mdToTrello(
         created++;
 
         createdItems.push(`${summaryId} | ${story.title} | ${targetStatus}`);
-        if (resolvedStoryIdField && story.storyId) {
-          await provider.setStoryId(cardId, story.storyId);
-          vlog("[create] storyId set", story.storyId);
-        }
       }
 
       if (!cardId) throw new Error("Missing card id for plan execution");
 
-      if (!plan.create && resolvedStoryIdField && story.storyId) {
-        await provider.setStoryId(cardId, story.storyId);
-      }
 
       const updatesPerformed: string[] = [];
 

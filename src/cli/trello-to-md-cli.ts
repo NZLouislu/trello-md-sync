@@ -55,7 +55,6 @@ async function main() {
     checklistName: checklistFlag ?? process.env.CHECKLIST_NAME,
     mdOutputDir: outputDirFlag ?? process.env.MD_OUTPUT_DIR,
     trelloListMapJson: process.env.TRELLO_LIST_MAP_JSON,
-    trelloStoryIdCustomFieldId: process.env.TRELLO_STORY_ID_CUSTOM_FIELD_ID,
     list: listFlag ?? process.env.TRELLO_FILTER_LIST,
     label: labelFlag ?? process.env.TRELLO_FILTER_LABEL,
     storyId: storyIdFlag ?? process.env.TRELLO_FILTER_STORYID,

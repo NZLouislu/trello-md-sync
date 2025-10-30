@@ -121,7 +121,6 @@ export async function trelloToMd(
     checklistName?: string;
     trelloListMapJson?: Record<string,string> | string;
     mdOutputDir?: string;
-    trelloStoryIdCustomFieldId?: string;
     projectRoot?: string;
     provider?: TrelloToMdProviderLike;
     list?: string | string[];
@@ -160,7 +159,6 @@ export async function trelloToMd(
       return Object.keys(m).length ? m : fallback;
     }
   })();
-  const storyIdField = args?.trelloStoryIdCustomFieldId ?? process.env.TRELLO_STORY_ID_CUSTOM_FIELD_ID ?? undefined;
   const verbose = (opts.logLevel === 'debug') || !!opts.verbose;
   const logJson = !!opts.json;
   const listFilters = normalizeFilters(args?.list, process.env.TRELLO_FILTER_LIST);
@@ -168,7 +166,7 @@ export async function trelloToMd(
   const storyIdFilters = normalizeFilters(args?.storyId, process.env.TRELLO_FILTER_STORYID);
 
   await ensureDir(outputDir);
-  const provider: TrelloToMdProviderLike = args?.provider ?? new TrelloProvider({ auth: { key, token }, listMap, checklistName, storyIdCustomFieldId: storyIdField });
+  const provider: TrelloToMdProviderLike = args?.provider ?? new TrelloProvider({ auth: { key, token }, listMap, checklistName });
   const cards: any[] = await provider.listItems(boardId);
   if (verbose) console.log(`mdsync: fetched cards=${cards.length}`);
   const lists = await provider.getLists(boardId);

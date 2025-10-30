@@ -63,7 +63,6 @@ Optional
 - MD_OUTPUT_DIR (default: examples/items)
 - CHECKLIST_NAME (default: Todos)
 - TRELLO_LIST_MAP_JSON (default: {"backlog":"Backlog","ready":"Ready","doing":"Doing","done":"Done"})
-- TRELLO_STORY_ID_CUSTOM_FIELD_ID
 - MDSYNC_CONCURRENCY (default: 4)
 - MDSYNC_DRY_RUN (1/true to enable)
 - MDSYNC_STRICT_STATUS (1/true to enforce status mapping)
@@ -268,7 +267,6 @@ boardId: process.env.TRELLO_BOARD_ID || "",
 outputDir: process.env.MD_OUTPUT_DIR || "examples/items",
 checklistName: process.env.CHECKLIST_NAME || "Todos",
 listMapJson: process.env.TRELLO_LIST_MAP_JSON,
-storyIdField: process.env.TRELLO_STORY_ID_CUSTOM_FIELD_ID,
 verbose: (process.env.LOG_LEVEL || "").toLowerCase() === "debug" || process.env.VERBOSE === "1",
 logJson: (process.env.LOG_JSON || "").toLowerCase() === "1" || (process.env.LOG_JSON || "").toLowerCase() === "true",
 });
@@ -281,7 +279,7 @@ Note: Function names and options mirror the actual example imports found in this
 - Story.body → Trello card description
 - Story.status → Trello list via TRELLO_LIST_MAP_JSON
 - Story.todos → Trello checklist items under CHECKLIST_NAME (default "Todos")
-- Story.storyId → Trello custom field via TRELLO_STORY_ID_CUSTOM_FIELD_ID (recommended) or embedded in description/frontmatter as fallback
+- Story.storyId → Trello card name (preferred) with legacy `ID:` name parsing as fallback
   - Card names are emitted as `STORY-XXXX <title>`; legacy cards named with `ID:` are still readable but will be normalized on update
 
 ## Markdown Formats
@@ -326,7 +324,7 @@ Backlog
 As a maintainer, I want a Trello-only environment configuration and a unified path strategy so that the tool runs reliably across machines and avoids hard-coded drive letters.
 
 ### Acceptance Criteria
-- [ ] Provide .env.example with TRELLO_KEY, TRELLO_TOKEN, TRELLO_BOARD_ID, TRELLO_LIST_MAP_JSON, TRELLO_STORY_ID_CUSTOM_FIELD_ID, MD_INPUT_DIR, MD_OUTPUT_DIR, CHECKLIST_NAME
+- [ ] Provide .env.example with TRELLO_KEY, TRELLO_TOKEN, TRELLO_BOARD_ID, TRELLO_LIST_MAP_JSON, MD_INPUT_DIR, MD_OUTPUT_DIR, CHECKLIST_NAME
 - [ ] Use path.resolve(__dirname, '../../examples/...') for all defaults
 - [ ] README mentions Trello-only positioning and environment variables
 
@@ -351,7 +349,7 @@ Multi-story markdown example:
   id: STORY-01
   description: As a maintainer, I want a Trello-only environment configuration and unified path strategy so that runs are reliable and portable across machines.
   acceptance_criteria:
-  - [x] Provide .env.example (TRELLO_KEY, TRELLO_TOKEN, TRELLO_BOARD_ID, TRELLO_LIST_MAP_JSON, TRELLO_STORY_ID_CUSTOM_FIELD_ID, MD_INPUT_DIR, MD_OUTPUT_DIR, CHECKLIST_NAME)
+  - [x] Provide .env.example (TRELLO_KEY, TRELLO_TOKEN, TRELLO_BOARD_ID, TRELLO_LIST_MAP_JSON, MD_INPUT_DIR, MD_OUTPUT_DIR, CHECKLIST_NAME)
   - [x] Use path.resolve(\_\_dirname, '../../examples/...') defaults; remove drive-letter hardcoding
   - [x] README updated with Trello-only positioning and env table
         priority: p1

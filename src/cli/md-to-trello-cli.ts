@@ -95,7 +95,6 @@ async function main() {
     trelloToken: process.env.TRELLO_TOKEN || "",
     trelloBoardId: process.env.TRELLO_BOARD_ID || "",
     trelloListMapJson: process.env.TRELLO_LIST_MAP_JSON,
-    trelloStoryIdCustomFieldId: process.env.TRELLO_STORY_ID_CUSTOM_FIELD_ID,
     projectRoot,
     logLevel: (() => {
       if (typeof logLevelFlag === "string" && logLevelFlag.toLowerCase() === "debug") return "debug";

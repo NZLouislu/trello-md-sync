@@ -29,7 +29,6 @@ class MemoryProvider {
   private labelByName: Map<string, MemoryLabel>;
   private labelById: Map<string, MemoryLabel>;
   private memberByName: Map<string, MemoryMember>;
-  private storyIdFieldId?: string;
   private counter = 0;
 
   constructor(opts: {
@@ -37,7 +36,6 @@ class MemoryProvider {
     checklistName: string;
     labels: MemoryLabel[];
     members: MemoryMember[];
-    storyIdFieldId?: string;
   }) {
     this.lists = opts.lists;
     this.cards = [];
@@ -45,7 +43,6 @@ class MemoryProvider {
     this.labelByName = new Map(opts.labels.map(l => [l.name.toLowerCase(), l]));
     this.labelById = new Map(opts.labels.map(l => [l.id, l]));
     this.memberByName = new Map(opts.members.map(m => [m.username.toLowerCase(), m]));
-    this.storyIdFieldId = opts.storyIdFieldId;
   }
 
   async getLists(): Promise<{ id: string; name: string }[]> {
@@ -64,17 +61,10 @@ class MemoryProvider {
   }
 
   async getCustomFields(): Promise<any[]> {
-    if (!this.storyIdFieldId) return [];
-    return [{ id: this.storyIdFieldId, name: "Story" }];
+    return [];
   }
 
   async findItemByStoryIdOrTitle(_: string, storyId: string, title: string): Promise<MemoryCard | null> {
-    if (storyId) {
-      for (const card of this.cards) {
-        const hit = (card.customFieldItems || []).find((it: any) => it.idCustomField === this.storyIdFieldId && it.value?.text === storyId);
-        if (hit) return card;
-      }
-    }
     if (storyId) {
       for (const card of this.cards) {
         const parsed = parseFormattedStoryName(card.name || "");
@@ -112,15 +102,6 @@ class MemoryProvider {
   async moveItemToStatus(cardId: string, _: string, status: string): Promise<void> {
     const card = this.getCard(cardId);
     card.idList = this.findListId(status);
-  }
-
-  async setStoryId(cardId: string, value: string): Promise<void> {
-    if (!this.storyIdFieldId) return;
-    const card = this.getCard(cardId);
-    card.customFieldItems = [{
-      idCustomField: this.storyIdFieldId,
-      value: { text: value }
-    }];
   }
 
   async ensureChecklist(cardId: string, items: { text: string; checked: boolean }[]): Promise<void> {
@@ -230,8 +211,7 @@ describe("md-to-trello to trello-to-md integration", () => {
         lists,
         checklistName: "Todos",
         labels: [{ id: "lab-blue", name: "Blue" }],
-        members: [{ id: "mem-dev", username: "dev@example.com" }],
-        storyIdFieldId: "cf-story"
+        members: [{ id: "mem-dev", username: "dev@example.com" }]
       });
 
       const result = await mdToTrello({

@@ -90,7 +90,6 @@ All example files should:
 
 Examples work **without** requiring Trello custom fields. The story ID is embedded in the card name using the `STORY-XXXX Title` format.
 
-For enhanced tracking, you can optionally configure `TRELLO_STORY_ID_CUSTOM_FIELD_ID` in your `.env` file.
 
 ## Legacy Format Support
 

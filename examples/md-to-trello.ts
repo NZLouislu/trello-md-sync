@@ -7,7 +7,6 @@ interface MdToTrelloConfig {
   trelloToken: string;
   trelloBoardId: string;
   trelloListMapJson?: Record<string, string> | string;
-  trelloStoryIdCustomFieldId?: string;
   mdInputDir?: string;
   mdOutputDir?: string;
   checklistName?: string;
@@ -26,7 +25,6 @@ export async function main() {
   const trelloToken = process.env.TRELLO_TOKEN || process.env.TRELLO_API_TOKEN || "";
   const trelloBoardId = process.env.TRELLO_BOARD_ID || process.env.BOARD_ID || "";
   const trelloListMapJson = process.env.TRELLO_LIST_MAP_JSON;
-  const trelloStoryIdCustomFieldId = process.env.TRELLO_STORY_ID_CUSTOM_FIELD_ID;
 
   const mdInputDir = process.env.MD_INPUT_DIR || undefined;
   const mdOutputDir = process.env.MD_OUTPUT_DIR || undefined;
@@ -52,7 +50,6 @@ export async function main() {
     trelloToken,
     trelloBoardId,
     trelloListMapJson,
-    trelloStoryIdCustomFieldId,
     mdInputDir,
     mdOutputDir,
     checklistName,
@@ -65,9 +62,6 @@ export async function main() {
     concurrency
   };
   const res = await mdToTrello(cfg);
-  if (!trelloStoryIdCustomFieldId) {
-    res.logs = (res.logs || []).concat(["[examples] trelloStoryIdCustomFieldId unset; matching via STORY titles"]);
-  }
   return res;
 }
 

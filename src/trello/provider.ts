@@ -13,7 +13,6 @@ export class TrelloProvider {
   private listMap: ListMap;
   private checklistName: string;
   private logger: ProviderLogger;
-  private storyIdCustomFieldId?: string;
   private listCache?: CacheEntry<{ id: string; name: string; }[]>;
   private labelListCache?: CacheEntry<any[]>;
   private memberListCache?: CacheEntry<any[]>;
@@ -21,11 +20,10 @@ export class TrelloProvider {
   private memberCache: Map<string, any>;
   private labelCache: Map<string, any>;
 
-  constructor(params: { auth: Auth; listMap: ListMap; checklistName: string; storyIdCustomFieldId?: string; logger?: ProviderLogger; }) {
+  constructor(params: { auth: Auth; listMap: ListMap; checklistName: string; logger?: ProviderLogger; }) {
     this.auth = params.auth;
     this.listMap = params.listMap;
     this.checklistName = params.checklistName;
-    this.storyIdCustomFieldId = params.storyIdCustomFieldId;
     this.logger = params.logger || {};
     this.idCache = new Map();
     this.memberCache = new Map();
@@ -130,13 +128,6 @@ export class TrelloProvider {
     const matchesById: any[] = [];
     const normalizedId = String(storyId || "").trim().toLowerCase();
     for (const c of cards) {
-      if (this.storyIdCustomFieldId && Array.isArray(c.customFieldItems)) {
-        const match = c.customFieldItems.find((it: any) => it.idCustomField === this.storyIdCustomFieldId && (it.value?.text || it.value?.number || it.value?.checked) === storyId);
-        if (match) {
-          this.idCache.set(storyId, c.id);
-          return c as Card;
-        }
-      }
       if (normalizedId) {
         const parsed = parseFormattedStoryName(String(c?.name || ""));
         if (parsed.storyId && parsed.storyId.toLowerCase() === normalizedId) {
@@ -179,12 +170,6 @@ export class TrelloProvider {
   async getItemBody(cardId: string): Promise<string> {
     const c = await this.req(`/cards/${cardId}`, { method: "GET" });
     return c.desc || "";
-  }
-
-  async setStoryId(cardId: string, value: string): Promise<void> {
-    if (!this.storyIdCustomFieldId) return;
-    await this.req(`/cards/${cardId}/customField/${this.storyIdCustomFieldId}/item`, { method: "PUT", body: JSON.stringify({ value: { text: value } }), headers: { "Content-Type": "application/json" } as any });
-    this.idCache.set(value, cardId);
   }
 
   async replaceChecklist(cardId: string, name: string, items: { text: string; checked: boolean; }[]): Promise<void> {
