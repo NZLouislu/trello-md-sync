@@ -32,6 +32,26 @@ export function renderSingleStoryMarkdown(s: Story): string {
     }
   }
   lines.push("");
+  const priorityLabel = typeof s.meta?.priorityLabel === "string" ? s.meta.priorityLabel.trim() : "";
+  const priorityValue = typeof s.meta?.priority === "string" ? s.meta.priority.trim() : "";
+  const priority = priorityLabel || priorityValue;
+  if (priority) {
+    lines.push("### Priority");
+    lines.push(priority);
+    lines.push("");
+  }
+  const labels = Array.isArray(s.labels)
+    ? s.labels.map(label => label.trim()).filter(label => {
+        if (!label) return false;
+        if (!priorityLabel) return true;
+        return label !== priorityLabel;
+      })
+    : [];
+  if (labels.length) {
+    lines.push("### Labels");
+    lines.push(labels.join(", "));
+    lines.push("");
+  }
   return lines.join("\n").replace(/\n+$/, "") + "\n";
 }
 

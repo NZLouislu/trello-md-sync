@@ -107,6 +107,7 @@ export function mapCardToStory(card: any, checklistName: string, options?: { pri
       const priority = reverseMap[label.toLowerCase()];
       if (priority) {
         meta.priority = priority;
+        meta.priorityLabel = options.priorityLabelMap[priority] || label;
         break;
       }
     }

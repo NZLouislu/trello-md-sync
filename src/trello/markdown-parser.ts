@@ -123,6 +123,12 @@ function parseStorySection(lines: string[], start: number, options: ParseOptions
     } else if (section.includes("label")) {
       const vals = splitCsvLine(l);
       for (const v of vals) if (v) labels.push(v);
+    } else if (section.includes("priority")) {
+      if (l.trim()) {
+        const text = l.trim();
+        meta.priorityLabel = text;
+        if (!meta.priority) meta.priority = text;
+      }
     }
 
     i++;
