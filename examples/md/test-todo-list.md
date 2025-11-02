@@ -7,7 +7,7 @@
     - [ ] Missing Story ID entries trigger structured errors containing file and line metadata
     - [ ] Normalized statuses resolve via TRELLO_LIST_MAP_JSON with strictStatus guardrails
     - [ ] Unit tests cover mixed H2 and - Story: inputs with ≥90% branch coverage
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, parser]
   Assignees: [backend]
 
@@ -18,7 +18,7 @@
     - [ ] `renderSingleStoryMarkdown()`, `buildStoryPlan()`, and `mapCardToStory()` consistently emit and parse `STORY-XXXX <title>` names
     - [ ] `TrelloProvider.findItemByStoryIdOrTitle()` and `createCardLookup()` uniquely locate cards without relying on custom fields
     - [ ] `examples/md/test-todo-list.md`, `stories/trello-upgrade-stories.md`, and related samples align with the new format and remain round-trip safe
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, parser]
   Assignees: [backend]
 
@@ -29,7 +29,7 @@
     - [ ] Round-trip and examples dry-run flows simulate Trello boards without custom fields to verify sync accuracy
     - [ ] Test runs complete without warnings and coverage reports show ≥90% on critical modules
     - [ ] CI configurations or snapshots are refreshed to reflect the new expected outputs
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, tests]
   Assignees: [qa]
 
@@ -40,7 +40,7 @@
     - [ ] `npm t` and `npm run build` pass locally and in CI without warnings or errors
     - [ ] Migration documentation or scripts guide converting legacy `ID:` card names to `STORY-XXXX`
     - [ ] `tasks/test planning story.md` and related planning docs incorporate the new verification checklist
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, ci]
   Assignees: [devops]
 
@@ -51,7 +51,7 @@
     - [ ] `npm run md -- --projectRoot examples` and `npm run trello -- --projectRoot examples --dry-run` run inside `examples/` without warnings or errors
     - [ ] Fixtures, snapshots, and mock data in `examples/__tests__` align with the new format and pass
     - [ ] README or task documents include an example runbook describing no-custom-field usage and verification steps
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, examples]
   Assignees: [devops]
 
@@ -64,7 +64,7 @@
     - [ ] Label and member lookups cache Trello IDs and log unresolved entries as warnings
     - [ ] findItemByStoryIdOrTitle() prefers custom field matches and only warns on title fallbacks
     - [ ] Provider unit tests mock Trello REST endpoints covering success, retry, and failure paths
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, provider]
   Assignees: [backend]
 
@@ -77,7 +77,7 @@
     - [ ] Live execution updates card name, desc, list, checklist, labels, and members atomically per story
     - [ ] writeLocal option renders single-story markdown snapshots for each processed story
     - [ ] Integration tests confirm idempotent runs on examples/md/test-todo-list.md
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, importer]
   Assignees: [backend]
 
@@ -91,7 +91,7 @@
     - [ ] Exported files parse back into identical Story objects via parseMarkdownToStories()
     - [ ] Integration tests cover mixed checklist states and filename truncation logic
     - [ ] Exported filenames follow `<storyId>-<slug(title)>.md`; missing ID falls back to `mdsync-<slug(title)>.md` with warning
-  Priority: p2
+  Priority: Medium
   Labels: [sync, trello, exporter]
   Assignees: [backend]
 
@@ -104,7 +104,7 @@
     - [ ] README documents Trello environment variables, list mapping JSON, and usage examples
     - [ ] tasks/trello 开发计划.md references the new workflows without GitHub terminology
     - [ ] .env.example includes Trello key, token, board, checklist name, and path variables
-  Priority: p2
+  Priority: Medium
   Labels: [sync, docs, cli]
   Assignees: [docs]
 
@@ -117,6 +117,6 @@
     - [ ] Integration tests simulate md→Trello and Trello→md flows using mocked REST responses
     - [ ] E2E dry-run scenario validates command outputs for examples directory
     - [ ] CI pipeline blocks on coverage <85% or parsing errors and publishes summary artifacts
-  Priority: p1
+  Priority: High
   Labels: [sync, tests, ci]
   Assignees: [qa]

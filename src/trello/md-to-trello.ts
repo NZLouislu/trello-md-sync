@@ -16,6 +16,7 @@ type MdToTrelloDryRunSummary = {
   priorityWarnings: string[];
   missingLabels: string[];
   aliasWarnings: string[];
+  seededLabels?: string[];
   stats: {
     prioritiesWithMappings: number;
     prioritiesMissingLabels: number;
@@ -139,6 +140,40 @@ function normalizeStatusKey(status: string): string {
 function sanitizeValue(value: string): string {
   const trimmed = (value || "").trim();
   return trimmed.replace(/^\[|\]$/g, "").replace(/^"|"$/g, "").replace(/^'|'$/g, "");
+}
+
+function parsePriorityMap(input?: Record<string, string> | string): Record<string, string> {
+  if (!input) return {};
+  if (typeof input === "string") {
+    try {
+      const parsed = JSON.parse(input) as Record<string, unknown>;
+      const map: Record<string, string> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === "string") map[key] = value;
+      }
+      return map;
+    } catch {
+      return {};
+    }
+  }
+  return input;
+}
+
+function normalizePriorityValue(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function resolvePriorityValue(value: string, map: Record<string, string>): { key: string; label: string } {
+  if (!value) return { key: "", label: "" };
+  if (map[value]) return { key: value, label: map[value] };
+  const normalized = normalizePriorityValue(value);
+  for (const [key, label] of Object.entries(map)) {
+    if (normalizePriorityValue(key) === normalized) return { key, label };
+    if (normalizePriorityValue(label) === normalized) return { key, label };
+    const withoutPrefix = label.replace(/^priority[\s:-]*/i, "");
+    if (normalizePriorityValue(withoutPrefix) === normalized) return { key, label };
+  }
+  return { key: "", label: "" };
 }
 
 function extractLabelIds(card: any): string[] {
@@ -372,10 +407,9 @@ async function buildStoryPlan(
   const currentChecklist = existing ? extractChecklistFromCard(existing, ctx.checklistName) : [];
   const checklistChanged = create ? desiredChecklist.length > 0 : !checklistEqual(currentChecklist, desiredChecklist);
 
-  const desiredLabelNames = (story.labels || []).map(sanitizeValue).filter(Boolean);
+  let desiredLabelNames = (story.labels || []).map(sanitizeValue).filter(Boolean);
   let desiredMemberNames = (story.assignees || []).map(sanitizeValue).filter(Boolean);
 
-  // Apply member alias mapping if configured
   if (ctx.memberAliasMap) {
     const aliasMap = typeof ctx.memberAliasMap === 'string'
       ? (() => { try { return JSON.parse(ctx.memberAliasMap as string); } catch { return {}; } })()
@@ -384,6 +418,17 @@ async function buildStoryPlan(
   }
 
   const priorityValue = sanitizeValue(story.meta?.priority || "");
+  let priorityLabelName = "";
+  if (priorityValue && ctx.priorityLabelMap) {
+    const priorityMap = parsePriorityMap(ctx.priorityLabelMap);
+    const match = resolvePriorityValue(priorityValue, priorityMap);
+    if (match.label) {
+      priorityLabelName = match.label;
+    }
+  }
+  if (priorityLabelName && !desiredLabelNames.includes(priorityLabelName)) {
+    desiredLabelNames = [...desiredLabelNames, priorityLabelName];
+  }
 
   const labelResult = desiredLabelNames.length
     ? await ctx.provider.resolveLabelIds(ctx.boardId, desiredLabelNames)
@@ -392,35 +437,9 @@ async function buildStoryPlan(
     ? await ctx.provider.resolveMemberIds(ctx.boardId, desiredMemberNames)
     : { ids: [] as string[], missing: [] as string[] };
 
-  // Handle priority after resolving labels
   if (priorityValue) {
-    // Check if priority maps to a label
-    const isMapped = ctx.priorityLabelMap ? (() => {
-      const map = typeof ctx.priorityLabelMap === 'string'
-        ? (() => { try { return JSON.parse(ctx.priorityLabelMap as string); } catch { return {}; } })()
-        : ctx.priorityLabelMap;
-      return !!map && !!map[priorityValue];
-    })() : false;
-
-    let labelExists = false;
-    if (isMapped) {
-      const mappedLabel = (() => {
-        const map = typeof ctx.priorityLabelMap === 'string'
-          ? (() => { try { return JSON.parse(ctx.priorityLabelMap as string); } catch { return {}; } })()
-          : ctx.priorityLabelMap;
-        return map[priorityValue];
-      })();
-
-      // Check if the mapped label exists
-      if (desiredLabelNames.includes(mappedLabel)) {
-        labelExists = !labelResult.missing.includes(mappedLabel);
-      } else {
-        // Need to check separately
-        const priorityLabelResult = await ctx.provider.resolveLabelIds(ctx.boardId, [mappedLabel]);
-        labelExists = priorityLabelResult.missing.length === 0;
-      }
-    }
-
+    const isMapped = !!priorityLabelName;
+    const labelExists = isMapped && !labelResult.missing.includes(priorityLabelName);
     ctx.collectPriority(priorityValue, isMapped, labelExists);
   }
 
@@ -655,23 +674,42 @@ export async function mdToTrello(
   dryRunSummary.moved = movedPlans.map(p => p.story.storyId || p.story.title);
   dryRunSummary.checklistChanges = checklistPlans.map(p => p.story.storyId || p.story.title);
 
-  // Ensure required labels are created if ensureLabels is enabled
-  if (cfg.ensureLabels && cfg.requiredLabels && cfg.requiredLabels.length > 0) {
-    const allLabelNames = new Set<string>();
-    for (const story of allStories) {
-      if (story.labels) {
-        for (const label of story.labels) {
-          if (label) allLabelNames.add(sanitizeValue(label));
-        }
+  const allLabelNames = new Set<string>();
+  for (const story of allStories) {
+    if (story.labels) {
+      for (const label of story.labels) {
+        if (label) allLabelNames.add(sanitizeValue(label));
       }
     }
+    if (story.meta?.priority && cfg.priorityLabelMap) {
+      const priorityMap = parsePriorityMap(cfg.priorityLabelMap);
+      const resolved = resolvePriorityValue(sanitizeValue(story.meta.priority), priorityMap);
+      if (resolved.label) allLabelNames.add(resolved.label);
+    }
+  }
+  if (cfg.requiredLabels && cfg.requiredLabels.length > 0) {
     for (const req of cfg.requiredLabels) {
       if (req) allLabelNames.add(sanitizeValue(req));
     }
-    const labelsToEnsure = Array.from(allLabelNames).filter(Boolean).map(name => ({ name }));
-    if (labelsToEnsure.length > 0 && provider.ensureLabels) {
-      vlog("[init] ensuring labels:", labelsToEnsure.map(l => l.name).join(", "));
-      await provider.ensureLabels(boardId, labelsToEnsure);
+  }
+  if (cfg.labelTokenMap) {
+    const tokenMap = typeof cfg.labelTokenMap === 'string'
+      ? (() => { try { return JSON.parse(cfg.labelTokenMap as string); } catch { return {}; } })()
+      : cfg.labelTokenMap;
+    for (const labelName of Object.values(tokenMap)) {
+      if (labelName && typeof labelName === 'string') allLabelNames.add(sanitizeValue(labelName));
+    }
+  }
+
+  const labelsToEnsure = Array.from(allLabelNames).filter(Boolean).map(name => ({ name }));
+  if (cfg.ensureLabels && labelsToEnsure.length > 0 && provider.ensureLabels) {
+    vlog("[init] ensuring labels:", labelsToEnsure.map(l => l.name).join(", "));
+    const ensureResult = await provider.ensureLabels(boardId, labelsToEnsure, { create: true });
+    if (ensureResult.created.length > 0) {
+      vlog("[init] created labels:", ensureResult.created.length);
+    }
+    if (ensureResult.missing.length > 0) {
+      vlog("[warn] failed to create labels:", ensureResult.missing.join(", "));
     }
   }
 

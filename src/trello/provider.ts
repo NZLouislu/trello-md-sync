@@ -19,6 +19,7 @@ export class TrelloProvider {
   private idCache: Map<string, string>;
   private memberCache: Map<string, any>;
   private labelCache: Map<string, any>;
+  private boardIdCache: Map<string, string>;
 
   constructor(params: { auth: Auth; listMap: ListMap; checklistName: string; logger?: ProviderLogger; }) {
     this.auth = params.auth;
@@ -28,6 +29,7 @@ export class TrelloProvider {
     this.idCache = new Map();
     this.memberCache = new Map();
     this.labelCache = new Map();
+    this.boardIdCache = new Map();
   }
 
   private qs(extra?: Record<string,string>): string {
@@ -77,8 +79,30 @@ export class TrelloProvider {
     return value;
   }
 
+  private async normalizeBoardId(boardId: string): Promise<string> {
+    const key = (boardId || "").trim();
+    if (!key) return boardId;
+    if (this.boardIdCache.has(key)) return this.boardIdCache.get(key)!;
+    if (/^[0-9a-f]{24}$/i.test(key)) {
+      this.boardIdCache.set(key, key);
+      return key;
+    }
+    try {
+      const res = await this.req(`/boards/${key}?fields=id`, { method: "GET" });
+      const resolved = String(res?.id || "").trim();
+      if (resolved) {
+        this.boardIdCache.set(key, resolved);
+        return resolved;
+      }
+    } catch (err) {
+      this.logger.warn?.("trello.board.resolve.failed", { boardId: key, error: (err as any)?.message });
+    }
+    this.boardIdCache.set(key, key);
+    return key;
+  }
+
   async listItems(boardId: string): Promise<Card[]> {
-    return this.req(`/boards/${boardId}/cards?customFieldItems=true&checklists=all`, { method: "GET" });
+    return this.req(`/boards/${boardId}/cards?customFieldItems=true&checklists=all&members=true`, { method: "GET" });
   }
 
   async getCustomFields(boardId: string): Promise<any[]> {
@@ -220,7 +244,8 @@ export class TrelloProvider {
     const existing: string[] = [];
     const missing: string[] = [];
     if (!labels.length) return { created, existing, missing };
-    const current = await this.getBoardLabels(boardId);
+    const normalizedBoardId = await this.normalizeBoardId(boardId);
+    const current = await this.getBoardLabels(normalizedBoardId);
     const byName = new Map<string, any>();
     for (const label of current) {
       const key = (label.name || "").toLowerCase();
@@ -242,7 +267,7 @@ export class TrelloProvider {
         continue;
       }
       const color = input.color || "sky";
-      const createdLabel = await this.req(`/labels`, { method: "POST", body: new URLSearchParams({ idBoard: boardId, name: input.name, color }) as any });
+      const createdLabel = await this.req(`/labels`, { method: "POST", body: new URLSearchParams({ idBoard: normalizedBoardId, name: input.name, color }) as any });
       if (createdLabel?.id) {
         created.push(createdLabel.id);
         await this.cacheLabel(boardId, key, createdLabel);

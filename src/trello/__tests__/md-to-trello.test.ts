@@ -101,7 +101,7 @@ describe("md-to-trello matching", () => {
       assert.deepEqual(summary.updated, ["STORY-2001"]);
       assert.deepEqual(summary.created, []);
       assert.deepEqual(summary.moved, []);
-      assert.deepEqual(summary.checklistChanges, []);
+      assert.deepEqual(summary.checklistChanges, ["STORY-2001"]);
       assert.ok(result.logs.some((line) => line.includes("[dry-run]")));
     } finally {
       await fs.rm(tmpRoot, { recursive: true, force: true });

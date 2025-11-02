@@ -17,7 +17,17 @@ export async function main() {
   if (!process.env.MD_OUTPUT_DIR) {
     process.env.MD_OUTPUT_DIR = path.resolve(__dirname, "items");
   }
-  const res = await trelloToMd(undefined, { logLevel, json });
+
+  const priorityLabelMap = process.env.PRIORITY_LABEL_MAP_JSON || undefined;
+  const memberAliasMap = process.env.MEMBER_ALIAS_MAP_JSON || undefined;
+
+  const res = await trelloToMd({
+    trelloKey: process.env.TRELLO_KEY || "",
+    trelloToken: process.env.TRELLO_TOKEN || "",
+    trelloBoardId: process.env.TRELLO_BOARD_ID || "",
+    priorityLabelMap,
+    memberAliasMap
+  }, { logLevel, json });
   return res;
 }
 

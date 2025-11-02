@@ -54,7 +54,7 @@ function storyEquivalent(a: Story, b: Story): boolean {
   return todosEqual(a.todos || [], b.todos || []);
 }
 
-export function mapCardToStory(card: any, checklistName: string): Story {
+export function mapCardToStory(card: any, checklistName: string, options?: { priorityLabelMap?: Record<string, string>; memberAliasMap?: Record<string, string> }): Story {
   const rawName = String(card?.name || "").trim();
   const parsedName = parseFormattedStoryName(rawName);
   const rawId = extractStoryIdFromCustomFields(card);
@@ -75,15 +75,52 @@ export function mapCardToStory(card: any, checklistName: string): Story {
   const labels = Array.isArray(card.labels)
     ? card.labels.map((l: any) => (l?.name || "").trim()).filter((n: string) => !!n)
     : [];
+
+  const assignees: string[] = [];
+  if (Array.isArray(card.members)) {
+    for (const m of card.members) {
+      const username = m?.username || m?.fullName || m?.memberFullName || "";
+      if (username) {
+        if (options?.memberAliasMap) {
+          const reverseMap: Record<string, string> = {};
+          for (const [alias, trelloName] of Object.entries(options.memberAliasMap)) {
+            reverseMap[trelloName.toLowerCase()] = alias;
+          }
+          const alias = reverseMap[username.toLowerCase()];
+          assignees.push(alias || username);
+        } else {
+          assignees.push(username);
+        }
+      }
+    }
+  } else if (Array.isArray(card.idMembers)) {
+    assignees.push(...card.idMembers.map((id: any) => String(id)));
+  }
+
+  const meta: Record<string, any> = { generatedId: !storyId };
+  if (options?.priorityLabelMap && labels.length > 0) {
+    const reverseMap: Record<string, string> = {};
+    for (const [priority, labelName] of Object.entries(options.priorityLabelMap)) {
+      reverseMap[labelName.toLowerCase()] = priority;
+    }
+    for (const label of labels) {
+      const priority = reverseMap[label.toLowerCase()];
+      if (priority) {
+        meta.priority = priority;
+        break;
+      }
+    }
+  }
+
   return {
     storyId,
     title,
     status,
     body: card.desc || "",
     todos,
-    assignees: [],
+    assignees,
     labels,
-    meta: { generatedId: !storyId }
+    meta
   };
 }
 
@@ -126,6 +163,8 @@ export async function trelloToMd(
     list?: string | string[];
     label?: string | string[];
     storyId?: string | string[];
+    priorityLabelMap?: Record<string, string> | string;
+    memberAliasMap?: Record<string, string> | string;
   },
   opts: { logLevel?: 'info'|'debug'; json?: boolean; verbose?: boolean; projectRoot?: string } = {}
 ): Promise<{ written: number; files: { file: string; storyId: string; title: string; status: string }[]; totalCards: number; filteredCards: number }> {
@@ -213,8 +252,23 @@ export async function trelloToMd(
   if (labelFilters.length && filteredCards.length === 0 && verbose) console.warn("trello-to-md: no cards found for label filters", labelFilters);
   if (storyIdFilters.length && filteredCards.length === 0 && verbose) console.warn("trello-to-md: no cards found for storyId filters", storyIdFilters);
 
+  const priorityLabelMap = (() => {
+    if (!args?.priorityLabelMap) return undefined;
+    if (typeof args.priorityLabelMap === 'string') {
+      try { return JSON.parse(args.priorityLabelMap); } catch { return undefined; }
+    }
+    return args.priorityLabelMap;
+  })();
+  const memberAliasMap = (() => {
+    if (!args?.memberAliasMap) return undefined;
+    if (typeof args.memberAliasMap === 'string') {
+      try { return JSON.parse(args.memberAliasMap); } catch { return undefined; }
+    }
+    return args.memberAliasMap;
+  })();
+
   for (const c of sortedCards) {
-    const s = mapCardToStory(c, checklistName);
+    const s = mapCardToStory(c, checklistName, { priorityLabelMap, memberAliasMap });
     const md = renderSingleStoryMarkdown(s);
     const file = path.join(outputDir, fileNameFromStory(s));
     await fs.writeFile(file, md, "utf8");
