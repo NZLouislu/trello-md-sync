@@ -8,6 +8,7 @@
     "md:json": "set LOG_JSON=1&& node -r ts-node/register ./md-to-trello.ts",
     "trello": "node -r ts-node/register ./trello-to-md.ts",
     "trello:debug": "set LOG_LEVEL=debug&& node -r ts-node/register ./trello-to-md.ts",
+    "trello:story": "node -r ts-node/register ./trello-to-md.ts --story",
     "test": "mocha -r ts-node/register \"__tests__/**/*.test.ts\""
   },
   "devDependencies": {

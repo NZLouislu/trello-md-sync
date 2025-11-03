@@ -3,11 +3,15 @@ import { trelloToMd } from "../trello/trello-to-md";
 type FlagValue = string | boolean;
 type FlagMap = Record<string, FlagValue>;
 
-function parseArgs(argv: string[]): FlagMap {
+function parseArgs(argv: string[]): { flags: FlagMap; positional: string[] } {
   const flags: FlagMap = {};
+  const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i];
-    if (!token.startsWith("--")) continue;
+    if (!token.startsWith("--")) {
+      positional.push(token);
+      continue;
+    }
     const raw = token.slice(2);
     const eq = raw.indexOf("=");
     let key = raw;
@@ -24,7 +28,7 @@ function parseArgs(argv: string[]): FlagMap {
     }
     flags[key.toLowerCase()] = value;
   }
-  return flags;
+  return { flags, positional };
 }
 
 function parseBoolean(value: FlagValue | undefined): boolean | undefined {
@@ -37,7 +41,7 @@ function parseBoolean(value: FlagValue | undefined): boolean | undefined {
 }
 
 async function main() {
-  const flags = parseArgs(process.argv.slice(2));
+  const { flags, positional } = parseArgs(process.argv.slice(2));
   const logLevelFlag = flags["loglevel"];
   const jsonFlag = parseBoolean(flags["json"]);
   const debugFlag = parseBoolean(flags["debug"]);
@@ -47,17 +51,29 @@ async function main() {
   const listFlag = typeof flags["list"] === "string" ? flags["list"] as string : undefined;
   const labelFlag = typeof flags["label"] === "string" ? flags["label"] as string : undefined;
   const storyIdFlag = typeof flags["storyid"] === "string" ? flags["storyid"] as string : undefined;
+  const storyFlag = typeof flags["story"] === "string" ? flags["story"] as string : undefined;
+
+  let storyId = storyIdFlag || storyFlag;
+  let outputDir = outputDirFlag;
+
+  for (const arg of positional) {
+    if (/^Story-/i.test(arg) && !storyId) {
+      storyId = arg;
+    } else if (!outputDir) {
+      outputDir = arg;
+    }
+  }
 
   const args = {
     trelloKey: process.env.TRELLO_KEY || "",
     trelloToken: process.env.TRELLO_TOKEN || "",
     trelloBoardId: process.env.TRELLO_BOARD_ID || "",
     checklistName: checklistFlag ?? process.env.CHECKLIST_NAME,
-    mdOutputDir: outputDirFlag ?? process.env.MD_OUTPUT_DIR,
+    mdOutputDir: outputDir ?? process.env.MD_OUTPUT_DIR,
     trelloListMapJson: process.env.TRELLO_LIST_MAP_JSON,
     list: listFlag ?? process.env.TRELLO_FILTER_LIST,
     label: labelFlag ?? process.env.TRELLO_FILTER_LABEL,
-    storyId: storyIdFlag ?? process.env.TRELLO_FILTER_STORYID,
+    storyId: storyId ?? process.env.TRELLO_FILTER_STORYID,
   };
   const opts = {
     logLevel: (() => {

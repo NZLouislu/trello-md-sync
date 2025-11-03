@@ -82,8 +82,40 @@ function createMockProvider(listMap: Record<string, string>): TrelloProviderLike
   };
 }
 
+function parseArgs(argv: string[]): { flags: Record<string, string | boolean>; positional: string[] } {
+  const flags: Record<string, string | boolean> = {};
+  const positional: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const token = argv[i];
+    if (!token.startsWith("--")) {
+      positional.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const eq = raw.indexOf("=");
+    let key = raw;
+    let value: string | boolean = true;
+    if (eq >= 0) {
+      key = raw.slice(0, eq);
+      value = raw.slice(eq + 1);
+    } else {
+      const next = argv[i + 1];
+      if (next && !next.startsWith("--")) {
+        value = next;
+        i++;
+      }
+    }
+    flags[key.toLowerCase()] = value;
+  }
+  return { flags, positional };
+}
+
 export async function main() {
   dotenv.config({ path: path.resolve(__dirname, "../.env") });
+  
+  const { flags } = parseArgs(process.argv.slice(2));
+  const dryRunFlag = flags["dry-run"] === true || flags["dry-run"] === "true";
+  
   const trelloKey = process.env.TRELLO_KEY || process.env.TRELLO_API_KEY || "";
   const trelloToken = process.env.TRELLO_TOKEN || process.env.TRELLO_API_TOKEN || "";
   const trelloBoardId = process.env.TRELLO_BOARD_ID || process.env.BOARD_ID || "";
@@ -104,7 +136,7 @@ export async function main() {
     return s === "1" || s === "true" || s === "yes" || s === "on";
   };
   const writeLocal = bool(process.env.WRITE_LOCAL);
-  const dryRun = bool(process.env.DRY_RUN);
+  const dryRun = dryRunFlag || bool(process.env.DRY_RUN);
   const strictStatus = bool(process.env.STRICT_STATUS);
   const ensureLabels = bool(process.env.MDSYNC_ENSURE_LABELS || process.env.ENSURE_LABELS);
   const concurrency = Number.isFinite(Number(process.env.CONCURRENCY)) ? Number(process.env.CONCURRENCY) : undefined;

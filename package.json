@@ -23,12 +23,13 @@
     "test": "nyc mocha -r ts-node/register \"src/**/__tests__/**/*.test.ts\" \"src/testing/**/*.test.ts\"",
     "lint": "prettier --check .",
     "verify": "npm test && npm run build",
-    "md": "set MD_INPUT_DIR=./examples/md&& set MD_OUTPUT_DIR=./examples/items&& node dist/src/trello/md-to-trello.js",
+    "md": "set MD_INPUT_DIR=./examples/md&& set MD_OUTPUT_DIR=./examples/items&& node dist/src/cli/md-to-trello-cli.js",
     "md:logs": "set VERBOSE=1&& npm run md",
     "md:json": "set LOG_JSON=1&& npm run md",
-    "trello": "set MD_OUTPUT_DIR=./examples/items&& node dist/src/trello/trello-to-md.js",
+    "trello": "set MD_OUTPUT_DIR=./examples/items&& node dist/src/cli/trello-to-md-cli.js",
     "trello:logs": "set VERBOSE=1&& npm run trello",
-    "trello:json": "set LOG_JSON=1&& npm run trello"
+    "trello:json": "set LOG_JSON=1&& npm run trello",
+    "trello:story": "set MD_OUTPUT_DIR=./examples/items&& node dist/src/cli/trello-to-md-cli.js --story"
   },
   "keywords": [
     "github",

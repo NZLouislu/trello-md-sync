@@ -21,6 +21,7 @@ yarn-error.log*
 /lib
 /coverage/
 /.nyc_output
+/.codeflicker/
 
 # Tests (ignore ephemeral artifacts under src/testing; keep .test.ts sources)
 src/testing/**/__snapshots__/
