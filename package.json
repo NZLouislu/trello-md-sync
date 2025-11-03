@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A tool to sync Trello with local markdown files",
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "author": "Louis Lu, NZLouis <nzlouis.com@gmail.com> (https://blog.nzlouis.com)",
   "homepage": "https://nzlouis.com",
   "repository": {
@@ -13,6 +14,13 @@
     "url": "https://github.com/nzlouislu/trello-md-sync/issues"
   },
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
     "md-to-trello": "dist/src/cli/md-to-trello-cli.js",
     "trello-to-md": "dist/src/cli/trello-to-md-cli.js"
@@ -63,5 +71,11 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ]
 }

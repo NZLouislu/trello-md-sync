@@ -4,15 +4,18 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "newLine": "LF",
     "outDir": "./dist/",
-    "target": "es5",
+    "rootDir": "./",
+    "target": "es2018",
     "sourceMap": true,
     "declaration": true,
+    "declarationMap": true,
     "jsx": "preserve",
     "skipLibCheck": true,
     "lib": [
-      "esnext",
+      "es2018",
       "dom"
     ],
     /* Strict Type-Checking Options */
@@ -29,10 +32,13 @@
   },
   "include": [
     "src/**/*",
-    "examples/**/*"
+    "index.ts"
   ],
   "exclude": [
     ".git",
-    "node_modules"
+    "node_modules",
+    "dist",
+    "examples",
+    "**/*.test.ts"
   ]
 }
