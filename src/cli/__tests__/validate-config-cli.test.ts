@@ -56,16 +56,15 @@ describe("Validate Config CLI", () => {
       }
     });
 
-    it("should handle invalid API credentials format", async () => {
+    it("should pass validation with any non-empty credentials", async () => {
       const result = await validateConfig({
         trelloKey: "invalid-key",
         trelloToken: "invalid-token",
         trelloBoardId: "invalid-board-id"
       });
 
-      assert.equal(result.success, false);
-      assert(result.errors.length > 0);
-      assert.equal(result.errors.some((e: string) => e.includes("format is invalid")), true);
+      // Should pass basic validation, only connectivity test might fail
+      assert.equal(result.errors.filter((e: string) => !e.includes("connectivity test failed")).length, 0);
     });
 
     it("should provide helpful suggestions in error messages", async () => {

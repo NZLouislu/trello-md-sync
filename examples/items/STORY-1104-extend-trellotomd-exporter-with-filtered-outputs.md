@@ -16,5 +16,8 @@ Update trelloToMd() to support filtering by list, label, or Story ID, render Tod
 - [ ] Integration tests cover mixed checklist states and filename truncation logic
 - [ ] Exported filenames follow `<storyId>-<slug(title)>.md`; missing ID falls back to `mdsync-<slug(title)>.md` with warning
 
+### Priority
+Priority: Medium
+
 ### Labels
 sync, trello, exporter

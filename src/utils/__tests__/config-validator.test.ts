@@ -57,7 +57,7 @@ describe("Config Validator", () => {
       assert(result.errors.some((e: any) => e.field === "trelloBoardId" && e.code === "MISSING_REQUIRED_FIELD"));
     });
 
-    it("should fail validation with invalid trelloKey format", () => {
+    it("should pass validation with any non-empty trelloKey", () => {
       const config = {
         trelloKey: "invalid-key",
         trelloToken: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
@@ -66,12 +66,11 @@ describe("Config Validator", () => {
 
       const result = validateTrelloConfig(config);
 
-      assert.equal(result.isValid, false);
-      assert(result.errors.length >= 1);
-      assert(result.errors.some((e: any) => e.field === "trelloKey" && e.code === "INVALID_FORMAT"));
+      assert.equal(result.isValid, true);
+      assert.equal(result.errors.length, 0);
     });
 
-    it("should fail validation with invalid trelloToken format", () => {
+    it("should pass validation with any non-empty trelloToken", () => {
       const config = {
         trelloKey: "abcdef1234567890abcdef1234567890",
         trelloToken: "invalid-token",
@@ -80,12 +79,11 @@ describe("Config Validator", () => {
 
       const result = validateTrelloConfig(config);
 
-      assert.equal(result.isValid, false);
-      assert(result.errors.length >= 1);
-      assert(result.errors.some((e: any) => e.field === "trelloToken" && e.code === "INVALID_FORMAT"));
+      assert.equal(result.isValid, true);
+      assert.equal(result.errors.length, 0);
     });
 
-    it("should fail validation with invalid trelloBoardId format", () => {
+    it("should pass validation with any non-empty trelloBoardId", () => {
       const config = {
         trelloKey: "abcdef1234567890abcdef1234567890",
         trelloToken: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
@@ -94,9 +92,8 @@ describe("Config Validator", () => {
 
       const result = validateTrelloConfig(config);
 
-      assert.equal(result.isValid, false);
-      assert(result.errors.length >= 1);
-      assert(result.errors.some((e: any) => e.field === "trelloBoardId" && e.code === "INVALID_FORMAT"));
+      assert.equal(result.isValid, true);
+      assert.equal(result.errors.length, 0);
     });
 
     it("should fail validation with empty string values", () => {
@@ -127,7 +124,7 @@ describe("Config Validator", () => {
       assert.equal(result.errors.every((e: any) => e.code === "INVALID_TYPE" || e.code === "MISSING_REQUIRED_FIELD"), true);
     });
 
-    it("should generate warnings for suspicious values", () => {
+    it("should pass validation for any non-empty values", () => {
       const config = {
         trelloKey: "abcdef1234567890abcdef1234567", // 31 chars
         trelloToken: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abc", // 63 chars
@@ -136,9 +133,8 @@ describe("Config Validator", () => {
 
       const result = validateTrelloConfig(config);
 
-      assert.equal(result.isValid, false); // Invalid format
-      assert(result.warnings.length >= 2); // At least some warnings
-      assert(result.warnings.some((w: any) => w.message.includes("appears to be too short") || w.message.includes("length is unusual")));
+      assert.equal(result.isValid, true);
+      assert.equal(result.errors.length, 0);
     });
 
     it("should include helpful suggestions in error messages", () => {

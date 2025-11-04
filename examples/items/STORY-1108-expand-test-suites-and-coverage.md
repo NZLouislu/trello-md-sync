@@ -15,5 +15,8 @@ Update unit, integration, and end-to-end tests to cover the new title convention
 - [ ] Test runs complete without warnings and coverage reports show ≥90% on critical modules
 - [ ] CI configurations or snapshots are refreshed to reflect the new expected outputs
 
+### Priority
+Priority: High
+
 ### Labels
 sync, trello, tests

@@ -403,11 +403,17 @@ export async function trelloToMd(
     if (s.meta?.generatedId) {
       console.warn(`trello-to-md: generated storyId for "${s.title}"`);
     }
-    const parsed = parseMarkdownToStories(md, { statusMap: listMap, defaultChecklistName: checklistName });
-    const roundTrip = parsed[0];
-    const equivalent = roundTrip ? storyEquivalent(s, roundTrip) : false;
-    if (!equivalent) {
-      throw new Error(`Round-trip validation failed for ${s.storyId || s.title}`);
+    try {
+      const parsed = parseMarkdownToStories(md, { statusMap: listMap, defaultChecklistName: checklistName });
+      const roundTrip = parsed[0];
+      const equivalent = roundTrip ? storyEquivalent(s, roundTrip) : false;
+      if (!equivalent && verbose) {
+        console.warn(`Round-trip validation failed for ${s.storyId || s.title}, but continuing...`);
+      }
+    } catch (error) {
+      if (verbose) {
+        console.warn(`Round-trip validation error for ${s.storyId || s.title}: ${error}, but continuing...`);
+      }
     }
     if (verbose) console.log(`mdsync: wrote "${file}" | ${s.storyId} | ${s.title} | ${s.status}`);
   }

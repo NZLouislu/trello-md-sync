@@ -15,5 +15,8 @@ Update parseBlockStory() and related utilities to fully support the revised Todo
 - [ ] Normalized statuses resolve via TRELLO_LIST_MAP_JSON with strictStatus guardrails
 - [ ] Unit tests cover mixed H2 and - Story: inputs with ≥90% branch coverage
 
+### Priority
+Priority: High
+
 ### Labels
 sync, trello, parser
