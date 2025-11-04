@@ -52,6 +52,14 @@ export function renderSingleStoryMarkdown(s: Story): string {
     lines.push(labels.join(", "));
     lines.push("");
   }
+  const assignees = Array.isArray(s.assignees)
+    ? s.assignees.map(assignee => assignee.trim()).filter(assignee => !!assignee)
+    : [];
+  if (assignees.length) {
+    lines.push("### Assignees");
+    lines.push(assignees.join(", "));
+    lines.push("");
+  }
   return lines.join("\n").replace(/\n+$/, "") + "\n";
 }
 

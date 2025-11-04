@@ -20,3 +20,6 @@ Priority: High
 
 ### Labels
 sync, trello, tests
+
+### Assignees
+backend

@@ -20,3 +20,6 @@ Priority: Medium
 
 ### Labels
 sync, docs, cli
+
+### Assignees
+backend

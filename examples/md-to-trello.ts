@@ -128,7 +128,7 @@ export async function main() {
     ? path.resolve(__dirname, "..")
     : __dirname;
 
-  const lvl = (process.env.LOG_LEVEL || "").toLowerCase();
+  const lvl = (flags["log-level"] as string) || (process.env.LOG_LEVEL || "").toLowerCase();
   const json = ((process.env.LOG_JSON || "").toLowerCase() === "1") || ((process.env.LOG_JSON || "").toLowerCase() === "true");
   const logLevel = (lvl === "debug" ? "debug" : "info") as 'info'|'debug';
   const bool = (v?: string) => {

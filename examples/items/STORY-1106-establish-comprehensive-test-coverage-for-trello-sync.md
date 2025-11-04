@@ -20,3 +20,6 @@ Priority: High
 
 ### Labels
 sync, tests, ci
+
+### Assignees
+backend

@@ -36,6 +36,7 @@ export function parseMarkdownToStories(md: string, options: ParseOptions = {}): 
   while (i < lines.length) {
     const line = lines[i];
 
+    // Handle single story sections (## Story:)
     const sec = line.match(sectionHeaderRe);
     if (sec) {
       const { story, nextIndex } = parseStorySection(lines, i, options);
@@ -44,6 +45,7 @@ export function parseMarkdownToStories(md: string, options: ParseOptions = {}): 
       continue;
     }
 
+    // Handle column headers and block stories (- Story:)
     const col = line.match(columnHeaderRe);
     if (col) {
       const column = col[1];

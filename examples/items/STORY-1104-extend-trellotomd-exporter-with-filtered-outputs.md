@@ -21,3 +21,6 @@ Priority: Medium
 
 ### Labels
 sync, trello, exporter
+
+### Assignees
+backend

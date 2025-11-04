@@ -85,12 +85,22 @@ export function mapCardToStory(card: any, checklistName: string, options?: { pri
       const username = m?.username || m?.fullName || m?.memberFullName || "";
       if (username) {
         if (options?.memberAliasMap) {
-          const reverseMap: Record<string, string> = {};
+          // Create reverse map that handles multiple aliases for the same Trello username
+          const reverseMap: Record<string, string[]> = {};
           for (const [alias, trelloName] of Object.entries(options.memberAliasMap)) {
-            reverseMap[trelloName.toLowerCase()] = alias;
+            const key = trelloName.toLowerCase();
+            if (!reverseMap[key]) {
+              reverseMap[key] = [];
+            }
+            reverseMap[key].push(alias);
           }
-          const alias = reverseMap[username.toLowerCase()];
-          assignees.push(alias || username);
+          const aliases = reverseMap[username.toLowerCase()];
+          if (aliases && aliases.length > 0) {
+            // Use the first alias as the primary one
+            assignees.push(aliases[0]);
+          } else {
+            assignees.push(username);
+          }
         } else {
           assignees.push(username);
         }

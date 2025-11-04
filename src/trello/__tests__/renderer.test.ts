@@ -35,4 +35,33 @@ describe("renderer", () => {
     const s: Story = { storyId: "", title: "Hello World!", status: "Backlog", body: "", todos: [], assignees: [], labels: [], meta: {} };
     assert.equal(preferredStoryFileName(s), "hello-world.md");
   });
+  it("renders assignees section", () => {
+    const s: Story = { 
+      storyId: "STORY-789", 
+      title: "Assignees Test", 
+      status: "Backlog", 
+      body: "Test body", 
+      todos: [], 
+      assignees: ["dev1", "dev2"], 
+      labels: [], 
+      meta: {} 
+    };
+    const md = renderSingleStoryMarkdown(s);
+    assert.ok(md.includes("### Assignees"));
+    assert.ok(md.includes("dev1, dev2"));
+  });
+  it("does not render assignees section when empty", () => {
+    const s: Story = { 
+      storyId: "STORY-790", 
+      title: "No Assignees Test", 
+      status: "Backlog", 
+      body: "Test body", 
+      todos: [], 
+      assignees: [], 
+      labels: [], 
+      meta: {} 
+    };
+    const md = renderSingleStoryMarkdown(s);
+    assert.ok(!md.includes("### Assignees"));
+  });
 });
