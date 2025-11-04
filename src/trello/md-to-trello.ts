@@ -357,6 +357,35 @@ function sameSet(a: string[], b: string[]): boolean {
   return true;
 }
 
+function deduplicateStoriesByStoryId(stories: Story[], verbose: boolean = false): Story[] {
+  const storyMap = new Map<string, Story>();
+  const duplicates: string[] = [];
+  
+  for (const story of stories) {
+    if (!story.storyId) {
+      storyMap.set(`no-id-${Math.random()}`, story);
+      continue;
+    }
+    
+    const key = story.storyId.trim().toLowerCase();
+    if (storyMap.has(key)) {
+      duplicates.push(story.storyId);
+      if (verbose) {
+        console.log(`[warn] Duplicate story ID found: ${story.storyId}, skipping duplicate`);
+      }
+      continue;
+    }
+    
+    storyMap.set(key, story);
+  }
+  
+  if (duplicates.length > 0 && verbose) {
+    console.log(`[warn] Skipped ${duplicates.length} duplicate stories with IDs: ${duplicates.join(", ")}`);
+  }
+  
+  return Array.from(storyMap.values());
+}
+
 function getCardStoryIdFromCard(card: any): string {
   const parsed = parseFormattedStoryName(String(card?.name || ""));
   if (parsed.storyId) return parsed.storyId;
@@ -783,9 +812,14 @@ export async function mdToTrello(
     allStories.push(...stories);
   }
 
+  const deduplicatedStories = deduplicateStoriesByStoryId(allStories, verbose);
+  if (verbose && deduplicatedStories.length !== allStories.length) {
+    console.log(`mdsync: deduplicated stories: ${allStories.length} -> ${deduplicatedStories.length}`);
+  }
+
   let outFiles: string[] = [];
   if (shouldWriteLocal) {
-    outFiles = await ensureRenderedOut(allStories, outputDir);
+    outFiles = await ensureRenderedOut(deduplicatedStories, outputDir);
     if (verbose) {
       console.log(`mdsync: rendered files=${outFiles.length}`);
       outFiles.forEach(f => console.log(`  wrote: ${f}`));
@@ -837,7 +871,7 @@ export async function mdToTrello(
   };
 
   const plans: StoryPlan[] = [];
-  for (const story of allStories) {
+  for (const story of deduplicatedStories) {
     const plan = await buildStoryPlan(story, {
       provider,
       boardId,
@@ -892,7 +926,7 @@ export async function mdToTrello(
   dryRunSummary.checklistChanges = checklistPlans.map(p => p.story.storyId || p.story.title);
 
   const allLabelNames = new Set<string>();
-  for (const story of allStories) {
+  for (const story of deduplicatedStories) {
     if (story.labels) {
       for (const label of story.labels) {
         if (label) allLabelNames.add(sanitizeValue(label));
@@ -931,7 +965,7 @@ export async function mdToTrello(
   }
 
   if (dryRun) {
-    vlog("[dry-run] stories=", allStories.length);
+    vlog("[dry-run] stories=", deduplicatedStories.length);
     vlog("[dry-run] summary=", JSON.stringify(dryRunSummary));
     if (logJson) {
       try {
@@ -948,7 +982,7 @@ export async function mdToTrello(
         failed: 0,
         errors: [],
         processedFiles: mdFiles.length,
-        processedStories: allStories.length,
+        processedStories: deduplicatedStories.length,
         renderedFiles: outFiles.length
       },
       logs,
@@ -1102,7 +1136,7 @@ export async function mdToTrello(
       failed,
       errors,
       processedFiles: mdFiles.length,
-      processedStories: allStories.length,
+      processedStories: deduplicatedStories.length,
       renderedFiles: outFiles.length
     },
     logs,
