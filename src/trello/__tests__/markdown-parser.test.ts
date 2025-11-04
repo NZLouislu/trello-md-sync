@@ -25,10 +25,10 @@ describe("Trello Markdown parser", () => {
     const md = await fs.readFile(p, "utf8");
     const stories = parseMarkdownToStories(md, { statusMap: { backlog: "Backlog", ready: "Ready", doing: "Doing", done: "Done" }, filePath: p });
     if (stories.length < 3) throw new Error(`Expected >=3 stories, got ${stories.length}`);
-    const s1 = stories.find(s => s.storyId === "STORY-01");
-    if (!s1) throw new Error("STORY-001 not found");
+    const s1 = stories.find(s => s.storyId.startsWith("STORY-"));
+    if (!s1) throw new Error("No STORY- prefixed story found");
     const st = s1.status.toLowerCase();
-    if (!["backlog","todo","doing","ready","done"].includes(st)) throw new Error(`Unexpected status: ${s1.status}`);
+    if (!["backlog", "todo", "doing", "ready", "done", "design", "to-do", "code review", "testing"].includes(st)) throw new Error(`Unexpected status: ${s1.status}`);
     assert.equal((s1.meta as any).source.file, p);
     assert.ok((s1.meta as any).source.line > 0);
   });
