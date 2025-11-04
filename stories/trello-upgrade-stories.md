@@ -7,7 +7,7 @@
     - [ ] Missing Story ID entries trigger structured errors containing file and line metadata
     - [ ] Normalized statuses resolve via TRELLO_LIST_MAP_JSON with strictStatus guardrails
     - [ ] Unit tests cover mixed H2 and - Story: inputs with ≥90% branch coverage
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, parser]
   Assignees: [backend]
 
@@ -20,7 +20,7 @@
     - [x] `renderSingleStoryMarkdown()`, `buildStoryPlan()`, and `mapCardToStory()` consistently emit and parse `STORY-XXXX <title>` names
     - [x] `TrelloProvider.findItemByStoryIdOrTitle()` and `createCardLookup()` uniquely locate cards without relying on custom fields
     - [x] `examples/md/test-todo-list.md`, `stories/trello-upgrade-stories.md`, and related samples align with the new format and remain round-trip safe
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, parser]
   Assignees: [backend]
 
@@ -31,7 +31,7 @@
     - [x] Round-trip and examples dry-run flows simulate Trello boards without custom fields to verify sync accuracy
     - [x] Test runs complete without warnings and coverage reports show ≥90% on critical modules
     - [x] CI configurations or snapshots are refreshed to reflect the new expected outputs
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, tests]
   Assignees: [qa]
 
@@ -42,7 +42,7 @@
     - [x] `npm t` and `npm run build` pass locally and in CI without warnings or errors
     - [x] Migration documentation or scripts guide converting legacy `ID:` card names to `STORY-XXXX`
     - [x] `tasks/测试计划story.md` and related planning docs incorporate the new verification checklist
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, ci]
   Assignees: [devops]
 
@@ -53,7 +53,7 @@
     - [x] `npm run md -- --projectRoot examples` and `npm run trello -- --projectRoot examples --dry-run` run inside `examples/` without warnings or errors
     - [x] Fixtures, snapshots, and mock data in `examples/__tests__` align with the new format and pass
     - [x] README or task documents include an example runbook describing no-custom-field usage and verification steps
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, examples]
   Assignees: [devops]
 
@@ -66,7 +66,7 @@
     - [ ] Label and member lookups cache Trello IDs and log unresolved entries as warnings
     - [ ] findItemByStoryIdOrTitle() prefers custom field matches and only warns on title fallbacks
     - [ ] Provider unit tests mock Trello REST endpoints covering success, retry, and failure paths
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, provider]
   Assignees: [backend]
 
@@ -79,7 +79,7 @@
     - [ ] Live execution updates card name, desc, list, checklist, labels, and members atomically per story
     - [ ] writeLocal option renders single-story markdown snapshots for each processed story
     - [ ] Integration tests confirm idempotent runs on examples/md/test-todo-list.md
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, importer]
   Assignees: [backend]
 
@@ -90,7 +90,7 @@
     - [x] Integration tests under `src/testing/` cover end-to-end scenarios for priority labels, label seeding, and member aliases
     - [x] Documentation updates explain how to configure priority mappings, label seeding, and member aliases without Trello custom fields
     - [x] CI enforces the new tests to prevent regressions in field visibility
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, testing]
   Assignees: [qa]
 
@@ -105,7 +105,7 @@
     - [ ] README documents Trello environment variables, list mapping JSON, and usage examples
     - [ ] tasks/trello 开发计划.md references the new workflows without GitHub terminology
     - [ ] .env.example includes Trello key, token, board, checklist name, and path variables
-  Priority: p2
+  Priority: High
   Labels: [sync, docs, cli]
   Assignees: [docs]
 
@@ -116,7 +116,7 @@
     - [x] Dry-run and live sync block or warn when a referenced priority label is missing on the board
     - [x] Configuration surface (CLI flag or config file) documents how to define priority label mappings
     - [x] Unit tests cover priority label mapping success and missing-label error paths
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, importer]
   Assignees: [backend]
 
@@ -127,7 +127,7 @@
     - [x] `mdToTrello` exposes configuration for mapping markdown label tokens to Trello label IDs
     - [x] Missing labels are surfaced clearly in dry-run output with remediation guidance
     - [x] Tests cover successful seeding and missing-label reporting scenarios
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, tooling]
   Assignees: [devops]
 
@@ -138,7 +138,7 @@
     - [x] Dry-run output highlights unmapped aliases with file and line context
     - [x] Member resolution reuses cached lookups and respects alias overrides during sync
     - [x] Unit or integration tests verify successful alias resolution and error handling
-  Priority: p1
+  Priority: High
   Labels: [sync, trello, importer]
   Assignees: [backend]
 
@@ -152,7 +152,7 @@
     - [x] Exported files parse back into identical Story objects via parseMarkdownToStories()
     - [x] Integration tests cover mixed checklist states and filename truncation logic
     - [x] Exported filenames follow `<storyId>-<slug(title)>.md`; missing ID falls back to `mdsync-<slug(title)>.md` with warning
-  Priority: p2
+  Priority: High
   Labels: [sync, trello, exporter]
   Assignees: [backend]
 
@@ -163,6 +163,6 @@
     - [x] Integration tests simulate md→Trello and Trello→md flows using mocked REST responses
     - [x] E2E dry-run scenario validates command outputs for examples directory
     - [x] CI pipeline blocks on coverage <85% or parsing errors and publishes summary artifacts
-  Priority: p1
+  Priority: High
   Labels: [sync, tests, ci]
   Assignees: [qa]

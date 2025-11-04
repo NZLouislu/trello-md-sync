@@ -497,10 +497,10 @@ export async function mdToTrello(
 
   const inputDir = cfg.mdInputDir
     ? (path.isAbsolute(cfg.mdInputDir) ? cfg.mdInputDir : path.resolve(projectRoot, cfg.mdInputDir))
-    : path.resolve(projectRoot, "examples/md");
+    : path.resolve(projectRoot, "trello");
   const outputDir = cfg.mdOutputDir
     ? (path.isAbsolute(cfg.mdOutputDir) ? cfg.mdOutputDir : path.resolve(projectRoot, cfg.mdOutputDir))
-    : path.resolve(projectRoot, "examples/items");
+    : path.resolve(projectRoot, "trello");
   const checklistName = cfg.checklistName || "Todos";
 
   const fallbackMap: Record<string, string> = {
