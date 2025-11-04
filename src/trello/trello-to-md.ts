@@ -262,7 +262,7 @@ export async function trelloToMd(
   args?: TrelloToMdArgs,
   opts: { logLevel?: 'info' | 'debug'; json?: boolean; verbose?: boolean; projectRoot?: string } = {}
 ): Promise<{ written: number; files: { file: string; storyId: string; title: string; status: string }[]; totalCards: number; filteredCards: number }> {
-  const projectRoot = opts.projectRoot ?? args?.projectRoot ?? path.resolve(__dirname, "../../");
+  const projectRoot = opts.projectRoot ?? args?.projectRoot ?? process.cwd();
   const key = args?.trelloKey ?? process.env.TRELLO_KEY ?? "";
   const token = args?.trelloToken ?? process.env.TRELLO_TOKEN ?? "";
   const boardId = args?.trelloBoardId ?? process.env.TRELLO_BOARD_ID ?? "";

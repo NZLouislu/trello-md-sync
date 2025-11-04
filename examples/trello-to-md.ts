@@ -75,7 +75,7 @@ export async function main() {
     memberAliasMap
   };
   
-  const res = await trelloToMd(config, { logLevel, json });
+  const res = await trelloToMd(config, { logLevel, json, projectRoot: path.resolve(__dirname, "..") });
   return res;
 }
 

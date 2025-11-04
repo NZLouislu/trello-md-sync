@@ -652,13 +652,7 @@ export async function mdToTrello(
     }
   }
 
-  const projectRoot = cfg.projectRoot;
-  if (!projectRoot) {
-    const msg = "Please specify the markdown files path (set opts.projectRoot or args.projectRoot).";
-    console.error(msg);
-    logs.push(msg);
-    return { result: { created: 0, updated: 0, skipped: 0, failed: 1, errors: [{ storyId: "", title: "(init)", message: msg }], processedFiles: 0, processedStories: 0, renderedFiles: 0 }, logs };
-  }
+  const projectRoot = cfg.projectRoot || process.cwd();
 
   const key = cfg.trelloKey;
   const token = cfg.trelloToken;

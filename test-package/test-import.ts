@@ -33,6 +33,23 @@ const testTodo: Todo = {
 console.log('Test story created:', testStory.storyId);
 console.log('Test todo created:', testTodo.text);
 
+// Test basic config object (without importing types that may not be available)
+const testConfig = {
+  trelloKey: 'test-key',
+  trelloToken: 'test-token',
+  trelloBoardId: 'test-board-id'
+};
+
+const testArgs = {
+  trelloKey: 'test-key',
+  trelloToken: 'test-token',
+  trelloBoardId: 'test-board-id',
+  mdOutputDir: './output'
+};
+
+console.log('Test config created:', testConfig.trelloKey);
+console.log('Test args created:', testArgs.trelloKey);
+
 if (typeof mdToTrello === 'function' && typeof trelloToMd === 'function') {
   console.log('✅ All functions and types imported successfully!');
 } else {

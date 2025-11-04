@@ -133,7 +133,7 @@ async function main() {
     })(),
     json: jsonFlag ?? ((process.env.LOG_JSON || "").toLowerCase() === "1"),
     verbose: debugFlag ?? ((process.env.VERBOSE || "").toLowerCase() === "1"),
-    projectRoot: projectRootFlag ?? process.env.PROJECT_ROOT
+    projectRoot: projectRootFlag ?? process.env.PROJECT_ROOT ?? process.cwd()
   };
 
   const validation = validateTrelloConfig({
