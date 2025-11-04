@@ -1,0 +1,45 @@
+# 源代码（只发布编译后的代码）
+src/
+*.ts
+!*.d.ts
+tsconfig.json
+
+# 测试文件
+**/__tests__/
+**/*.test.ts
+**/*.test.js
+.nyc_output/
+coverage/
+
+# 开发工具配置
+.vscode/
+.idea/
+.DS_Store
+.codeflicker/
+.codebuddy/
+.qodo/
+
+# 文档和任务
+tasks/
+examples/
+stories/
+trello/
+test-package/
+
+# 环境和日志
+.env
+.env.example
+*.log
+npm-debug.log*
+
+# Git
+.git/
+.gitignore
+
+# 构建工具
+.nycrc.json
+
+# 其他
+lib/
+images/
+CONFIGURATION.md

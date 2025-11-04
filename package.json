@@ -42,10 +42,20 @@
     "validate": "node dist/src/cli/validate-config-cli.js"
   },
   "keywords": [
-    "github",
-    "project",
+    "trello",
     "markdown",
-    "sync"
+    "sync",
+    "trello-api",
+    "project-management",
+    "task-management",
+    "cli",
+    "typescript",
+    "workflow",
+    "automation",
+    "kanban",
+    "agile",
+    "story",
+    "card"
   ],
   "license": "MIT",
   "dependencies": {
