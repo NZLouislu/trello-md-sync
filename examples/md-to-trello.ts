@@ -1,5 +1,5 @@
 import { mdToTrello } from "../src";
-import type { MdToTrelloConfig } from "../src/trello/md-to-trello";
+import type { MdToTrelloConfig } from "../src";
 import dotenv from "dotenv";
 import path from "path";
 

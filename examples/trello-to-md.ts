@@ -1,4 +1,5 @@
 import { trelloToMd } from "../src";
+import type { TrelloToMdArgs } from "../src";
 import dotenv from "dotenv";
 import path from "path";
 
@@ -64,7 +65,7 @@ export async function main() {
   const priorityLabelMap = process.env.PRIORITY_LABEL_MAP_JSON || undefined;
   const memberAliasMap = process.env.MEMBER_ALIAS_MAP_JSON || undefined;
 
-  const res = await trelloToMd({
+  const config: TrelloToMdArgs = {
     trelloKey: process.env.TRELLO_KEY || "",
     trelloToken: process.env.TRELLO_TOKEN || "",
     trelloBoardId: process.env.TRELLO_BOARD_ID || "",
@@ -72,7 +73,9 @@ export async function main() {
     storyId: storyId,
     priorityLabelMap,
     memberAliasMap
-  }, { logLevel, json });
+  };
+  
+  const res = await trelloToMd(config, { logLevel, json });
   return res;
 }
 
