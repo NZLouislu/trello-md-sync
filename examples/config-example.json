@@ -1,0 +1,41 @@
+{
+  "trelloKey": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+  "trelloToken": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4",
+  "trelloBoardId": "5f4e3d2c1b0a9f8e7d6c5b4a",
+  "projectRoot": "./",
+  "mdInputDir": "./stories",
+  "mdOutputDir": "./output",
+  "checklistName": "Tasks",
+  "logLevel": "info",
+  "json": false,
+  "writeLocal": true,
+  "dryRun": false,
+  "strictStatus": false,
+  "concurrency": 4,
+  "ensureLabels": true,
+  "requiredLabels": ["priority", "type", "status"],
+  "trelloListMapJson": {
+    "backlog": "Backlog",
+    "ready": "Ready",
+    "doing": "In Progress",
+    "review": "In Review",
+    "done": "Done"
+  },
+  "priorityLabelMap": {
+    "high": "Priority: High",
+    "medium": "Priority: Medium", 
+    "low": "Priority: Low",
+    "critical": "Priority: Critical"
+  },
+  "memberAliasMap": {
+    "john": "john.doe",
+    "jane": "jane.smith",
+    "bob": "robert.wilson"
+  },
+  "labelTokenMap": {
+    "bug": "Bug",
+    "feature": "Feature",
+    "enhancement": "Enhancement",
+    "documentation": "Documentation"
+  }
+}

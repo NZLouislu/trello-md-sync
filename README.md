@@ -24,6 +24,10 @@ This tool synchronises Markdown documents and Trello boards so teams can manage 
 - Status mapping: Backlog, Ready, In progress, In review, Done (with aliases)
 - Deterministic, idempotent behaviour keyed by Story ID
 - Dry-run with structured logs for CI gates
+- **Configuration validation** with clear error messages and suggestions
+- **Enhanced error handling** with recovery recommendations
+- **Directory management** with automatic creation and permission validation
+- **CLI validation command** to test configuration before sync operations
 - TypeScript API and runnable examples
 
 ## Requirements
@@ -44,9 +48,27 @@ npm install trello-md-sync
 TRELLO_KEY=your_trello_key
 TRELLO_TOKEN=your_trello_token
 TRELLO_BOARD_ID=your_board_id
+
+# Optional configuration
+PROJECT_ROOT=./
+MD_INPUT_DIR=./stories
+MD_OUTPUT_DIR=./output
+CHECKLIST_NAME=Tasks
+LOG_LEVEL=info
+
+# Advanced mappings (JSON format)
+TRELLO_LIST_MAP_JSON={"backlog":"Backlog","doing":"In Progress","done":"Done"}
+PRIORITY_LABEL_MAP_JSON={"high":"Priority: High","medium":"Priority: Medium","low":"Priority: Low"}
+MEMBER_ALIAS_MAP_JSON={"john":"john.doe","jane":"jane.smith"}
 ```
 
-3. Run the CLI commands or consume the TypeScript API as described below.
+3. Validate your configuration:
+
+```bash
+npm run validate
+```
+
+4. Run the CLI commands or consume the TypeScript API as described below.
 
 ## Usage
 
@@ -121,11 +143,98 @@ if (!exportSingleResult.result.success) {
 }
 ```
 
+## Configuration Validation
+
+The package includes comprehensive configuration validation to help you catch issues early:
+
+### Validate Configuration Command
+
+```bash
+# Validate your current configuration
+npm run validate
+
+# Or use the CLI directly
+validate-config --verbose
+```
+
+### Configuration Validation in Code
+
+```typescript
+import { validateTrelloConfig } from "trello-md-sync";
+
+const validation = validateTrelloConfig({
+  trelloKey: process.env.TRELLO_KEY,
+  trelloToken: process.env.TRELLO_TOKEN,
+  trelloBoardId: process.env.TRELLO_BOARD_ID
+});
+
+if (!validation.isValid) {
+  console.error("Configuration errors:");
+  validation.errors.forEach(error => {
+    console.error(`- ${error.field}: ${error.message}`);
+    if (error.suggestion) {
+      console.error(`  💡 ${error.suggestion}`);
+    }
+  });
+  process.exit(1);
+}
+```
+
+### Enhanced Error Handling
+
+```typescript
+import { mdToTrello, handleCommonErrors, formatErrorForUser } from "trello-md-sync";
+
+try {
+  const result = await mdToTrello(config);
+  console.log("Sync completed successfully");
+} catch (error) {
+  const syncError = handleCommonErrors(error);
+  console.error(formatErrorForUser(syncError));
+  
+  // Get recovery suggestions
+  const actions = getRecoveryActions(syncError);
+  console.log("Suggested actions:");
+  actions.forEach(action => console.log(`- ${action}`));
+}
+```
+
+## Troubleshooting
+
+### Common Configuration Issues
+
+1. **Invalid API Key Format**
+   ```
+   Error: Trello API key format is invalid
+   Solution: API key should be a 32-character hexadecimal string
+   ```
+
+2. **Permission Denied**
+   ```
+   Error: Output directory validation failed: Permission denied
+   Solution: Check file/directory permissions and ensure you have read/write access
+   ```
+
+3. **Board Not Found**
+   ```
+   Error: Trello board not found or inaccessible
+   Solution: Check that the board ID is correct and you have access to the board
+   ```
+
+### Getting Help
+
+- Run `npm run validate` to check your configuration
+- Use `--help` flag with CLI commands for usage information
+- Check the `examples/validation-examples.md` for detailed examples
+- Review error messages for specific suggestions and recovery actions
+
 ### Examples
 
 The `examples/` workspace demonstrates end-to-end usage with ready-made scripts:
 
 - `examples/md-to-trello.ts` — imports markdown from `examples/md/` into a Trello board.
+- `examples/validation-examples.md` — configuration validation examples and troubleshooting
+- `examples/config-example.json` — sample configuration file with all options
 - `examples/trello-to-md.ts` — exports Trello board items into `examples/items/`.
 - `examples/tests/` — Mocha scenarios that validate the flows.
 

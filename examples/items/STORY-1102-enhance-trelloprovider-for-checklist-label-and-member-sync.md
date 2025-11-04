@@ -15,8 +15,5 @@ Extend TrelloProvider to ensure checklist creation, label alignment, and member 
 - [ ] findItemByStoryIdOrTitle() prefers custom field matches and only warns on title fallbacks
 - [ ] Provider unit tests mock Trello REST endpoints covering success, retry, and failure paths
 
-### Priority
-Priority: High
-
 ### Labels
 sync, trello, provider

@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import { strict as assert } from "assert";
 import { parseMarkdownToStories } from "../trello/markdown-parser";
 import { renderSingleStoryMarkdown } from "../trello/renderer";
+import { validateAndEnsureDirectory } from "../utils/directory-manager";
 
 describe("roundtrip and idempotency", () => {
   it("renders parsed stories back to equivalent representation", async () => {
@@ -30,5 +31,19 @@ describe("roundtrip and idempotency", () => {
     const a = renderSingleStoryMarkdown(s as any);
     const b = renderSingleStoryMarkdown(s as any);
     assert.equal(a, b);
+  });
+
+  it("validates directory management during roundtrip", async () => {
+    const tempDir = path.join(__dirname, "../../temp-test");
+    
+    const result = await validateAndEnsureDirectory(tempDir);
+    assert(result.success);
+    
+    // Cleanup
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
   });
 });

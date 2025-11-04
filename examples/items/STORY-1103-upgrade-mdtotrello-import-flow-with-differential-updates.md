@@ -15,8 +15,5 @@ Refactor mdToTrello() to separate create/update/move/checklist flows, respect dr
 - [ ] writeLocal option renders single-story markdown snapshots for each processed story
 - [ ] Integration tests confirm idempotent runs on examples/md/test-todo-list.md
 
-### Priority
-Priority: High
-
 ### Labels
 sync, trello, importer

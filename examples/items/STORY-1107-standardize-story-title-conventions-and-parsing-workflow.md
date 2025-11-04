@@ -15,8 +15,5 @@ Refactor markdown-parser, renderer, md-to-trello, and trello-to-md naming and ma
 - [ ] `TrelloProvider.findItemByStoryIdOrTitle()` and `createCardLookup()` uniquely locate cards without relying on custom fields
 - [ ] `examples/md/test-todo-list.md`, `stories/trello-upgrade-stories.md`, and related samples align with the new format and remain round-trip safe
 
-### Priority
-Priority: High
-
 ### Labels
 sync, trello, parser

@@ -15,8 +15,5 @@ Align package.json scripts, README, tasks, and .env.example with Trello-first wo
 - [ ] tasks/trello 开发计划.md references the new workflows without GitHub terminology
 - [ ] .env.example includes Trello key, token, board, checklist name, and path variables
 
-### Priority
-Priority: Medium
-
 ### Labels
 sync, docs, cli

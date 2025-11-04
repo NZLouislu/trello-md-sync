@@ -15,8 +15,5 @@ Complete md and trello CLI validation and sample updates under the `examples/` d
 - [ ] Fixtures, snapshots, and mock data in `examples/__tests__` align with the new format and pass
 - [ ] README or task documents include an example runbook describing no-custom-field usage and verification steps
 
-### Priority
-Priority: High
-
 ### Labels
 sync, trello, examples

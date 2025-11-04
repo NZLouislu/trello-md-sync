@@ -15,8 +15,5 @@ Codify npm t and npm run build validation across scripts, documentation, and CI 
 - [ ] Migration documentation or scripts guide converting legacy `ID:` card names to `STORY-XXXX`
 - [ ] `tasks/test planning story.md` and related planning docs incorporate the new verification checklist
 
-### Priority
-Priority: High
-
 ### Labels
 sync, trello, ci

@@ -1,14 +1,64 @@
 import path from "path";
 import { mdToTrello, makeMdToTrelloSummary } from "../trello/md-to-trello";
+import { validateTrelloConfig } from "../utils/config-validator";
+import { handleCommonErrors, formatErrorForUser } from "../utils/error-handler";
 import type { MdToTrelloConfig } from "../trello/md-to-trello";
 
 type FlagValue = string | boolean;
 type FlagMap = Record<string, FlagValue>;
 
+function showHelp() {
+  console.log(`
+Usage: md-to-trello [options]
+
+Sync markdown files to Trello cards
+
+Options:
+  --help                    Show this help message
+  --projectroot <path>      Project root directory (default: current directory)
+  --input <path>           Input directory for markdown files (default: trello)
+  --output <path>          Output directory for processed files (default: trello)
+  --checklist <name>       Checklist name in Trello cards (default: Todos)
+  --loglevel <level>       Log level: info or debug (default: info)
+  --debug                  Enable debug logging
+  --json                   Output results in JSON format
+  --dry-run                Show what would be done without making changes
+  --strict-status          Require all statuses to be mapped
+  --write-local            Write processed markdown files locally
+  --ensure-labels          Create missing labels in Trello
+  --required-labels <list> Comma-separated list of required labels
+  --concurrency <number>   Number of parallel operations (default: 4)
+  --priority-label-map <json>  Map priority values to label names
+  --member-alias-map <json>    Map member aliases to Trello usernames
+  --label-token-map <json>     Map tokens to label names
+
+Environment Variables:
+  TRELLO_KEY              Trello API key (required)
+  TRELLO_TOKEN            Trello API token (required)
+  TRELLO_BOARD_ID         Trello board ID (required)
+  TRELLO_LIST_MAP_JSON    JSON mapping of status to list names
+  PROJECT_ROOT            Project root directory
+  MD_INPUT_DIR            Input directory for markdown files
+  MD_OUTPUT_DIR           Output directory for processed files
+  CHECKLIST_NAME          Checklist name in Trello cards
+  LOG_LEVEL               Log level (info or debug)
+  LOG_JSON                Output in JSON format (true/false)
+
+Examples:
+  md-to-trello --input ./stories --output ./processed
+  md-to-trello --dry-run --debug
+  md-to-trello --ensure-labels --required-labels "bug,feature,priority"
+`);
+}
+
 function parseArgs(argv: string[]): FlagMap {
   const flags: FlagMap = {};
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i];
+    if (token === "--help" || token === "-h") {
+      showHelp();
+      process.exit(0);
+    }
     if (!token.startsWith("--")) continue;
     const raw = token.slice(2);
     const eq = raw.indexOf("=");
@@ -71,6 +121,7 @@ function resolvePath(input: string | undefined, fallback: string): string {
 
 async function main() {
   const flags = parseArgs(process.argv.slice(2));
+  
   const logLevelFlag = flags["loglevel"];
   const jsonFlag = parseBoolean(flags["json"]);
   const dryRunFlag = parseBoolean(flags["dry-run"]);
@@ -90,6 +141,7 @@ async function main() {
 
   const envLogLevel = (process.env.LOG_LEVEL || "").toLowerCase() === "debug" ? "debug" : "info";
   const projectRoot = resolvePath(projectRootFlag ?? process.env.PROJECT_ROOT, process.cwd());
+  
   const config: MdToTrelloConfig = {
     trelloKey: process.env.TRELLO_KEY || "",
     trelloToken: process.env.TRELLO_TOKEN || "",
@@ -127,17 +179,48 @@ async function main() {
     memberAliasMap: parseJsonOrString<Record<string, string>>(memberAliasMapFlag as string | undefined ?? process.env.MEMBER_ALIAS_MAP_JSON) as Record<string, string> | string | undefined,
   };
 
+  const validation = validateTrelloConfig({
+    trelloKey: config.trelloKey,
+    trelloToken: config.trelloToken,
+    trelloBoardId: config.trelloBoardId
+  });
+
+  if (!validation.isValid) {
+    const errorMessages = validation.errors.map(e => `${e.field}: ${e.message}${e.suggestion ? ` (${e.suggestion})` : ''}`);
+    if (config.json) {
+      console.error(JSON.stringify({ 
+        kind: "md-to-trello", 
+        error: "Configuration validation failed", 
+        details: errorMessages 
+      }));
+    } else {
+      console.error("❌ Configuration validation failed:");
+      errorMessages.forEach(msg => console.error(`  ${msg}`));
+      console.error("\n💡 Run 'npm run validate' to check your configuration");
+    }
+    process.exit(1);
+  }
+
+  if (validation.warnings.length > 0 && !config.json) {
+    console.warn("⚠️  Configuration warnings:");
+    validation.warnings.forEach(w => {
+      console.warn(`  ${w.field}: ${w.message}${w.suggestion ? ` (${w.suggestion})` : ''}`);
+    });
+    console.warn();
+  }
+
   try {
     const result = await mdToTrello(config);
     const summary = makeMdToTrelloSummary(result.result);
     if (config.json) {
       console.log(JSON.stringify({ kind: "md-to-trello", summary, logs: result.logs }));
     } else {
-      console.log("md-to-trello summary:", summary);
-      console.log(`Processed ${summary.processedFiles} markdown files, parsed ${summary.processedStories} stories, rendered ${summary.renderedFiles} local files.`);
+      console.log("✅ md-to-trello summary:", summary);
+      console.log(`📄 Processed ${summary.processedFiles} markdown files, parsed ${summary.processedStories} stories, rendered ${summary.renderedFiles} local files.`);
       if (result.result.errors.length) {
+        console.error("\n❌ Errors encountered:");
         for (const error of result.result.errors) {
-          console.error("md-to-trello error:", error);
+          console.error(`  ${error.storyId || '(unknown)'}: ${error.message}`);
         }
       }
     }
@@ -145,11 +228,16 @@ async function main() {
       process.exitCode = 1;
     }
   } catch (err) {
-    const message = (err as any)?.message || String(err);
+    const syncError = handleCommonErrors(err);
     if (config.json || jsonFlag) {
-      console.error(JSON.stringify({ kind: "md-to-trello", error: message }));
+      console.error(JSON.stringify({ 
+        kind: "md-to-trello", 
+        error: syncError.message,
+        code: syncError.code,
+        suggestion: syncError.suggestion
+      }));
     } else {
-      console.error("md-to-trello failed:", message);
+      console.error(formatErrorForUser(syncError));
     }
     process.exitCode = 1;
   }

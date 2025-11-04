@@ -15,8 +15,5 @@ Implement unit, integration, and end-to-end test suites ensuring parser, importe
 - [ ] E2E dry-run scenario validates command outputs for examples directory
 - [ ] CI pipeline blocks on coverage <85% or parsing errors and publishes summary artifacts
 
-### Priority
-Priority: High
-
 ### Labels
 sync, tests, ci

@@ -23,12 +23,13 @@
   },
   "bin": {
     "md-to-trello": "dist/src/cli/md-to-trello-cli.js",
-    "trello-to-md": "dist/src/cli/trello-to-md-cli.js"
+    "trello-to-md": "dist/src/cli/trello-to-md-cli.js",
+    "validate-config": "dist/src/cli/validate-config-cli.js"
   },
   "scripts": {
     "build": "tsc",
     "clean": "rimraf dist",
-    "test": "nyc mocha -r ts-node/register \"src/**/__tests__/**/*.test.ts\" \"src/testing/**/*.test.ts\"",
+    "test": "nyc mocha -r ts-node/register \"src/**/__tests__/**/*.test.ts\" \"src/testing/**/*.test.ts\" \"src/utils/__tests__/**/*.test.ts\" \"src/cli/__tests__/**/*.test.ts\"",
     "lint": "prettier --check .",
     "verify": "npm test && npm run build",
     "md": "set MD_INPUT_DIR=./examples/md&& set MD_OUTPUT_DIR=./examples/items&& node dist/src/cli/md-to-trello-cli.js",
@@ -37,7 +38,8 @@
     "trello": "set MD_OUTPUT_DIR=./examples/items&& node dist/src/cli/trello-to-md-cli.js",
     "trello:logs": "set VERBOSE=1&& npm run trello",
     "trello:json": "set LOG_JSON=1&& npm run trello",
-    "trello:story": "set MD_OUTPUT_DIR=./examples/items&& node dist/src/cli/trello-to-md-cli.js --story"
+    "trello:story": "set MD_OUTPUT_DIR=./examples/items&& node dist/src/cli/trello-to-md-cli.js --story",
+    "validate": "node dist/src/cli/validate-config-cli.js"
   },
   "keywords": [
     "github",

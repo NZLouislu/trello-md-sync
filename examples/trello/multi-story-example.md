@@ -1,113 +1,122 @@
 ## Backlog
 
-- Story: STORY-01 Establish Trello-only environment and path strategy
-id: STORY-01
-description: As a maintainer, I want a Trello-only environment configuration and unified path strategy so that runs are reliable and portable across machines.
-acceptance_criteria:
-  - [x] Use path.resolve(__dirname, '../../examples/...') defaults; remove drive-letter hardcoding
-  - [x] README updated with Trello-only positioning and env table
-priority: p1
-labels: [trello-md-sync, env, docs]
-assignees: []
+- Story: STORY-1101 Refine Trello Markdown Parser for Multi-Story Imports
+  Description: Update parseBlockStory() and related utilities to fully support the revised Todo-list standard, capture source locations, and ensure status normalization integrates with the extended list map.
+  Acceptance_Criteria:
+    - [ ] Parser extracts Story ID, labels, assignees, priority, and acceptance criteria for every block story
+    - [ ] Missing Story ID entries trigger structured errors containing file and line metadata
+    - [ ] Normalized statuses resolve via TRELLO_LIST_MAP_JSON with strictStatus guardrails
+    - [ ] Unit tests cover mixed H2 and - Story: inputs with ≥90% branch coverage
+  Priority: High
+  Labels: [sync, trello, parser]
+  Assignees: [backend]
 
-- Story: STORY-02 Define unified Story/Todo model and types
-id: STORY-02
-description: As a developer, I need a unified Story/Todo model so parsing and syncing share one contract.
-acceptance_criteria:
-  - [x] Define Story {storyId, title, status, body, todos[], assignees[], labels[], meta}
-  - [x] Define Todo {text, done, assignee?, due?}
-  - [x] Document field mapping to Trello (name/desc/checklist/list)
-priority: p1
-labels: [trello-md-sync, core, types]
-assignees: []
+- Story: STORY-1107 Standardize Story Title Conventions and Parsing Workflow
+  Description: Refactor markdown-parser, renderer, md-to-trello, and trello-to-md naming and matching logic per the "story id + title upgrade plan" to remove the hard dependency on Trello custom fields while staying compatible with legacy data.
+  Acceptance_Criteria:
+    - [ ] `parseStorySection()` and `parseBlockStory()` support both `STORY-XXXX` and legacy `ID:` prefixes, prioritizing the new format
+    - [ ] `renderSingleStoryMarkdown()`, `buildStoryPlan()`, and `mapCardToStory()` consistently emit and parse `STORY-XXXX <title>` names
+    - [ ] `TrelloProvider.findItemByStoryIdOrTitle()` and `createCardLookup()` uniquely locate cards without relying on custom fields
+    - [ ] `examples/md/test-todo-list.md`, `stories/trello-upgrade-stories.md`, and related samples align with the new format and remain round-trip safe
+  Priority: High
+  Labels: [sync, trello, parser]
+  Assignees: [backend]
 
-- Story: STORY-03 Implement Markdown parser (sections + todo-list blocks)
-id: STORY-03
-description: As a developer, I can parse both single-story sections and multi-story todo-list blocks into Story[] with tolerant fallbacks.
-acceptance_criteria:
-  - [x] Detect "## Story: {title}" sections; extract Story ID/Status/Description/Acceptance Criteria/Priority/Labels/Assignees
-  - [x] Under Backlog/Ready/Doing/Done, detect "- Story: {title}" with block fields (id/description/acceptance_criteria/status/priority/labels/assignees)
-  - [x] Fallbacks: generate mdsync-{slug} id if missing; infer status from column; normalize status via mapping
-  - [x] Unit tests cover single/multiple stories and edge cases
-priority: p1
-labels: [trello-md-sync, parsing]
-assignees: []
+- Story: STORY-1108 Expand Test Suites and Coverage
+  Description: Update unit, integration, and end-to-end tests to cover the new title convention, keep legacy inputs compatible, and ensure overall coverage remains ≥90%.
+  Acceptance_Criteria:
+    - [ ] Tests for markdown-parser, renderer, trello-to-md, and md-to-trello include `STORY-XXXX` scenarios with legacy fallback assertions
+    - [ ] Round-trip and examples dry-run flows simulate Trello boards without custom fields to verify sync accuracy
+    - [ ] Test runs complete without warnings and coverage reports show ≥90% on critical modules
+    - [ ] CI configurations or snapshots are refreshed to reflect the new expected outputs
+  Priority: High
+  Labels: [sync, trello, tests]
+  Assignees: [qa]
 
-- Story: STORY-04 Implement Markdown renderer for single-story template
-id: STORY-04
-description: As a developer, I want a consistent renderer for single-story Markdown to ensure stable round-trip with minimal diff.
-acceptance_criteria:
-  - [x] Render sections: Title, Story ID, Status, Description, Acceptance Criteria (GFM)
-  - [x] Naming: prefers {storyId}.md; fallback mdsync-{slug(title)}.md
-  - [x] Idempotent formatting validated by tests
-priority: p2
-labels: [trello-md-sync, rendering]
-assignees: []
+- Story: STORY-1109 Solidify Build and Quality Verification Workflow
+  Description: Codify npm t and npm run build validation across scripts, documentation, and CI to guarantee zero warnings and publish the upgrade guidance.
+  Acceptance_Criteria:
+    - [ ] `package.json`, task documents, and README highlight the standardized title format and verification commands
+    - [ ] `npm t` and `npm run build` pass locally and in CI without warnings or errors
+    - [ ] Migration documentation or scripts guide converting legacy `ID:` card names to `STORY-XXXX`
+    - [ ] `tasks/test planning story.md` and related planning docs incorporate the new verification checklist
+  Priority: High
+  Labels: [sync, trello, ci]
+  Assignees: [devops]
 
-- Story: STORY-05 Build TrelloProvider with REST integration and retries
-id: STORY-05
-description: As a developer, I can create/update/move cards, manage checklists and custom fields with robust retry and error handling.
-acceptance_criteria:
-  - [x] Methods: findItemByStoryIdOrTitle, createItem, updateItem, moveItemToStatus, listItems, getItemBody, setStoryId
-  - [x] Auth via key/token; retry on 429/5xx with exponential backoff
-  - [x] Status↔List mapping via TRELLO_LIST_MAP_JSON
-  - [ ] Contract tests with mocked endpoints
-priority: p1
-labels: [trello-md-sync, provider, api]
-assignees: []
+- Story: STORY-1110 Example CLI Verification and Sample Alignment
+  Description: Complete md and trello CLI validation and sample updates under the `examples/` directory to guarantee round-trip sync without custom fields and repair related tests.
+  Acceptance_Criteria:
+    - [ ] `examples/md/*.md`, `examples/stories/*.md`, and CLI outputs conform to the `STORY-XXXX` convention
+    - [ ] `npm run md -- --projectRoot examples` and `npm run trello -- --projectRoot examples --dry-run` run inside `examples/` without warnings or errors
+    - [ ] Fixtures, snapshots, and mock data in `examples/__tests__` align with the new format and pass
+    - [ ] README or task documents include an example runbook describing no-custom-field usage and verification steps
+  Priority: High
+  Labels: [sync, trello, examples]
+  Assignees: [devops]
 
-- Story: STORY-06 Implement md-to-trello sync (batch, concurrency, dry-run)
-id: STORY-06
-description: As a PO, I can import multiple Stories from Markdown into Trello with concurrency control and a dry-run mode.
-acceptance_criteria:
-  - [x] Scan MD_INPUT_DIR, parse to Story[], upsert by storyId (title fallback)
-  - [x] Update name/desc, align checklist "Todos" (full replace), move to mapped list
-  - [x] Write storyId (custom field or desc frontmatter)
-  - [x] Flags: --concurrency, --dry-run, --checklist-name, --strict-status; summary report created/updated/skipped/failed
-priority: p1
-labels: [trello-md-sync, sync, cli]
-assignees: []
+## Design
 
-- Story: STORY-07 Implement trello-to-md export (single-story files)
-id: STORY-07
-description: As a developer, I can export Trello cards to single-story Markdown files for focused development and reviews.
-acceptance_criteria:
-  - [ ] Fetch cards with customFieldItems and checklists; filter by --list/--query
-  - [ ] Map to Story and render to MD_OUTPUT_DIR; overwrite policy favors Trello
-  - [ ] Round-trip test: exported files parse back to same Story data
-priority: p1
-labels: [trello-md-sync, export, cli]
-assignees: []
+- Story: STORY-1102 Enhance TrelloProvider for Checklist, Label, and Member Sync
+  Description: Extend TrelloProvider to ensure checklist creation, label alignment, and member assignment comply with the new import pipeline, including retries and detailed logging.
+  Acceptance_Criteria:
+    - [ ] Checklist synchronization recreates Todos checklist when acceptance criteria change
+    - [ ] Label and member lookups cache Trello IDs and log unresolved entries as warnings
+    - [ ] findItemByStoryIdOrTitle() prefers custom field matches and only warns on title fallbacks
+    - [ ] Provider unit tests mock Trello REST endpoints covering success, retry, and failure paths
+  Priority: High
+  Labels: [sync, trello, provider]
+  Assignees: [backend]
 
-- Story: STORY-08 Add structured logging and error aggregation
-id: STORY-08
-description: As an operator, I need structured logs and optional JSON output to integrate with pipelines and auditing.
-acceptance_criteria:
-  - [ ] Log levels and JSON mode for both CLIs
-  - [ ] Aggregated errors with actionable messages; exit codes reflect partial failures
-  - [ ] Tests assert JSON schema in log output
-priority: p2
-labels: [trello-md-sync, logging, ops]
-assignees: []
+## To-Do
 
-- Story: STORY-09 Test suite for parser/provider/sync (unit + integration)
-id: STORY-09
-description: As a QA engineer, I want comprehensive tests to ensure reliability and prevent regressions.
-acceptance_criteria:
-  - [ ] Unit: parser (sections + blocks), renderer, normalizeStatus, id extraction, naming
-  - [ ] Integration: mock Trello REST for md→Trello (batch+idempotency) and trello→md (single template)
-  - [ ] Coverage ≥ 80% on core paths; CI runs on PRs
-priority: p1
-labels: [trello-md-sync, testing, ci]
-assignees: []
+- Story: STORY-1103 Upgrade mdToTrello Import Flow with Differential Updates
+  Description: Refactor mdToTrello() to separate create/update/move/checklist flows, respect dry-run planning output, and honor strict status validation before API calls.
+  Acceptance_Criteria:
+    - [ ] Dry-run emits created/updated/moved/checklistChanges summaries without mutating Trello
+    - [ ] Live execution updates card name, desc, list, checklist, labels, and members atomically per story
+    - [ ] writeLocal option renders single-story markdown snapshots for each processed story
+    - [ ] Integration tests confirm idempotent runs on examples/md/test-todo-list.md
+  Priority: High
+  Labels: [sync, trello, importer]
+  Assignees: [backend]
 
-- Story: STORY-10 Prepare docs, examples and release 0.1.0
-id: STORY-10
-description: As a maintainer, I want a documented release process and examples so users can start within 15 minutes and we can publish safely.
-acceptance_criteria:
-  - [ ] README: install, .env, CLI examples, common errors
-  - [ ] examples/trello include sections and block formats; examples/items shows exports
-  - [ ] Build to dist, CHANGELOG, npm publish --access public; rollback via npm deprecate + patch
-priority: p2
-labels: [trello-md-sync, docs, release]
-assignees: []
+## Doing
+
+- Story: STORY-1104 Extend trelloToMd Exporter with Filtered Outputs
+  Description: Update trelloToMd() to support filtering by list, label, or Story ID, render Todos sections, and ensure filenames remain deterministic.
+  Acceptance_Criteria:
+    - [ ] CLI options --list, --label, and --storyId filter exported cards as expected
+    - [ ] Rendered markdown includes Story ID, Status, Description, and Todos blocks in fixed order
+    - [ ] Exported files parse back into identical Story objects via parseMarkdownToStories()
+    - [ ] Integration tests cover mixed checklist states and filename truncation logic
+    - [ ] Exported filenames follow `<storyId>-<slug(title)>.md`; missing ID falls back to `mdsync-<slug(title)>.md` with warning
+  Priority: Medium
+  Labels: [sync, trello, exporter]
+  Assignees: [backend]
+
+## Code Review
+
+- Story: STORY-1105 Refresh CLI, Documentation, and Environment Templates
+  Description: Align package.json scripts, README, tasks, and .env.example with Trello-first workflows, including parameter descriptions and onboarding guidance.
+  Acceptance_Criteria:
+    - [ ] npm run md and npm run trello scripts expose dry-run, json, and projectRoot parameters
+    - [ ] README documents Trello environment variables, list mapping JSON, and usage examples
+    - [ ] tasks/trello 开发计划.md references the new workflows without GitHub terminology
+    - [ ] .env.example includes Trello key, token, board, checklist name, and path variables
+  Priority: Medium
+  Labels: [sync, docs, cli]
+  Assignees: [docs]
+
+## Testing
+
+- Story: STORY-1106 Establish Comprehensive Test Coverage for Trello Sync
+  Description: Implement unit, integration, and end-to-end test suites ensuring parser, importer, exporter, and provider modules meet coverage thresholds and CI gating.
+  Acceptance_Criteria:
+    - [ ] Unit tests assert parser edge cases, provider retries, and renderer output with ≥90% coverage on critical paths
+    - [ ] Integration tests simulate md→Trello and Trello→md flows using mocked REST responses
+    - [ ] E2E dry-run scenario validates command outputs for examples directory
+    - [ ] CI pipeline blocks on coverage <85% or parsing errors and publishes summary artifacts
+  Priority: High
+  Labels: [sync, tests, ci]
+  Assignees: [qa]

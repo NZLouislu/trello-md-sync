@@ -4,6 +4,9 @@ import path from "path";
 import { TrelloProvider } from "./provider";
 import { renderSingleStoryMarkdown } from "./renderer";
 import { parseMarkdownToStories } from "./markdown-parser";
+import { validateTrelloConfig } from "../utils/config-validator";
+import { validateAndEnsureDirectory } from "../utils/directory-manager";
+import { handleCommonErrors } from "../utils/error-handler";
 import type { Story, Todo } from "./types";
 import { parseFormattedStoryName, storyFileName } from "./story-format";
 
@@ -151,47 +154,170 @@ function fileNameFromStory(s: Story): string {
 async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }
+/**
+ * Arguments interface for Trello to Markdown synchronization
+ * 
+ * @interface TrelloToMdArgs
+ */
+export interface TrelloToMdArgs {
+  /**
+   * Trello API key - required for authentication
+   * @description Get your API key from https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/
+   * @example "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+   * @validation Must be a 32-character hexadecimal string
+   */
+  trelloKey: string;
+
+  /**
+   * Trello API token - required for authentication
+   * @description Generate a token from https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/
+   * @example "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4"
+   * @validation Must be a 64-character hexadecimal string
+   */
+  trelloToken: string;
+
+  /**
+   * Trello board ID - identifies the source board
+   * @description Find your board ID in the Trello board URL
+   * @example "5f4e3d2c1b0a9f8e7d6c5b4a"
+   * @validation Must be a 24-character alphanumeric string
+   */
+  trelloBoardId: string;
+
+  /**
+   * Name of the checklist in Trello cards
+   * @description Name of the checklist to export as markdown todos
+   * @default "Todos"
+   * @example "Tasks"
+   */
+  checklistName?: string;
+
+  /**
+   * Mapping of Trello list names to status values
+   * @description Maps Trello list names to markdown status values
+   * @default { "backlog": "Backlog", "ready": "Ready", "doing": "Doing", "done": "Done" }
+   * @example { "To Do": "todo", "In Progress": "in-progress", "Done": "completed" }
+   */
+  trelloListMapJson?: Record<string, string> | string;
+
+  /**
+   * Output directory for markdown files
+   * @description Directory to write markdown files (relative to projectRoot)
+   * @default "trello"
+   * @example "output/stories"
+   */
+  mdOutputDir?: string;
+
+  /**
+   * Project root directory
+   * @description Base directory for resolving relative paths
+   * @default process.cwd()
+   * @example "/path/to/project"
+   */
+  projectRoot?: string;
+
+  /**
+   * Custom Trello provider implementation
+   * @description Override default Trello provider for testing or customization
+   */
+  provider?: TrelloToMdProviderLike;
+
+  /**
+   * Filter by Trello list names
+   * @description Only export cards from specified lists
+   * @example ["Backlog", "In Progress"]
+   */
+  list?: string | string[];
+
+  /**
+   * Filter by label names
+   * @description Only export cards with specified labels
+   * @example ["bug", "feature"]
+   */
+  label?: string | string[];
+
+  /**
+   * Filter by story IDs
+   * @description Only export cards with specified story IDs
+   * @example ["STORY-1001", "STORY-1002"]
+   */
+  storyId?: string | string[];
+
+  /**
+   * Mapping of priority values to label names
+   * @description Maps Trello label names back to priority metadata
+   * @example { "high": "Priority: High", "medium": "Priority: Medium", "low": "Priority: Low" }
+   */
+  priorityLabelMap?: Record<string, string> | string;
+
+  /**
+   * Mapping of Trello usernames to member aliases
+   * @description Maps Trello usernames to friendly names
+   * @example { "john.doe": "john", "jane.smith": "jane" }
+   */
+  memberAliasMap?: Record<string, string> | string;
+}
+
 export async function trelloToMd(
-  args?: {
-    trelloKey: string;
-    trelloToken: string;
-    trelloBoardId: string;
-    checklistName?: string;
-    trelloListMapJson?: Record<string,string> | string;
-    mdOutputDir?: string;
-    projectRoot?: string;
-    provider?: TrelloToMdProviderLike;
-    list?: string | string[];
-    label?: string | string[];
-    storyId?: string | string[];
-    priorityLabelMap?: Record<string, string> | string;
-    memberAliasMap?: Record<string, string> | string;
-  },
-  opts: { logLevel?: 'info'|'debug'; json?: boolean; verbose?: boolean; projectRoot?: string } = {}
+  args?: TrelloToMdArgs,
+  opts: { logLevel?: 'info' | 'debug'; json?: boolean; verbose?: boolean; projectRoot?: string } = {}
 ): Promise<{ written: number; files: { file: string; storyId: string; title: string; status: string }[]; totalCards: number; filteredCards: number }> {
   const projectRoot = opts.projectRoot ?? args?.projectRoot ?? path.resolve(__dirname, "../../");
   const key = args?.trelloKey ?? process.env.TRELLO_KEY ?? "";
   const token = args?.trelloToken ?? process.env.TRELLO_TOKEN ?? "";
   const boardId = args?.trelloBoardId ?? process.env.TRELLO_BOARD_ID ?? "";
+
+  // Skip validation if a custom provider is provided (for testing)
+  if (!args?.provider) {
+    const validation = validateTrelloConfig({
+      trelloKey: key,
+      trelloToken: token,
+      trelloBoardId: boardId
+    });
+
+    if (!validation.isValid) {
+      const errorMessages = validation.errors.map(e => `${e.field}: ${e.message}${e.suggestion ? ` (${e.suggestion})` : ''}`);
+      throw new Error(`Configuration validation failed: ${errorMessages.join('; ')}`);
+    }
+
+    if (validation.warnings.length > 0) {
+      validation.warnings.forEach(w => {
+        const warningMsg = `Warning - ${w.field}: ${w.message}${w.suggestion ? ` (${w.suggestion})` : ''}`;
+        console.warn(warningMsg);
+      });
+    }
+  }
   const checklistName = args?.checklistName ?? process.env.CHECKLIST_NAME ?? "Todos";
   const listMapRaw = args?.trelloListMapJson ?? process.env.TRELLO_LIST_MAP_JSON ?? "";
   const outputDir = args?.mdOutputDir
     ? (path.isAbsolute(args.mdOutputDir) ? args.mdOutputDir : path.resolve(projectRoot, args.mdOutputDir))
     : (process.env.MD_OUTPUT_DIR
-        ? (path.isAbsolute(process.env.MD_OUTPUT_DIR) ? process.env.MD_OUTPUT_DIR : path.resolve(projectRoot, process.env.MD_OUTPUT_DIR))
-        : path.resolve(projectRoot, "trello"));
+      ? (path.isAbsolute(process.env.MD_OUTPUT_DIR) ? process.env.MD_OUTPUT_DIR : path.resolve(projectRoot, process.env.MD_OUTPUT_DIR))
+      : path.resolve(projectRoot, "trello"));
+
+  const verbose = (opts.logLevel === 'debug') || !!opts.verbose;
+
+  const outputDirValidation = await validateAndEnsureDirectory(outputDir);
+  if (!outputDirValidation.success) {
+    throw new Error(`Output directory validation failed: ${outputDirValidation.error}`);
+  }
+
+  if (outputDirValidation.created && verbose) {
+    console.log(`trello-to-md: Created output directory: ${outputDir}`);
+  }
+
   const listMap = (() => {
-    const fallback = { backlog: "Backlog", ready: "Ready", doing: "Doing", done: "Done" } as Record<string,string>;
+    const fallback = { backlog: "Backlog", ready: "Ready", doing: "Doing", done: "Done" } as Record<string, string>;
     if (!listMapRaw) return fallback;
     if (typeof listMapRaw !== "string") {
-      const m: Record<string,string> = {};
+      const m: Record<string, string> = {};
       for (const k of Object.keys(listMapRaw)) m[k.toLowerCase()] = (listMapRaw as any)[k];
       return Object.keys(m).length ? m : fallback;
     }
     try {
       return JSON.parse(listMapRaw as string);
     } catch {
-      const m: Record<string,string> = {};
+      const m: Record<string, string> = {};
       for (const pair of (listMapRaw as string).split(",").map(s => s.trim()).filter(Boolean)) {
         const [k, v] = pair.split(":").map(s => s.trim());
         if (k && v) m[k.toLowerCase()] = v;
@@ -199,7 +325,6 @@ export async function trelloToMd(
       return Object.keys(m).length ? m : fallback;
     }
   })();
-  const verbose = (opts.logLevel === 'debug') || !!opts.verbose;
   const logJson = !!opts.json;
   const listFilters = normalizeFilters(args?.list, process.env.TRELLO_FILTER_LIST);
   const labelFilters = normalizeFilters(args?.label, process.env.TRELLO_FILTER_LABEL);
@@ -210,7 +335,7 @@ export async function trelloToMd(
   const cards: any[] = await provider.listItems(boardId);
   if (verbose) console.log(`mdsync: fetched cards=${cards.length}`);
   const lists = await provider.getLists(boardId);
-  const listNameById: Record<string,string> = {};
+  const listNameById: Record<string, string> = {};
   for (const l of lists) listNameById[l.id] = l.name;
   for (const c of cards) c.idListName = listNameById[c.idList] || "";
   await fs.mkdir(outputDir, { recursive: true });
@@ -291,7 +416,7 @@ export async function trelloToMd(
     writtenFiles.forEach(w => console.log(`  > ${w.file}`));
   }
   if (logJson) {
-    try { console.log(JSON.stringify({ mdsyncDetails: { writtenFiles } })); } catch {}
+    try { console.log(JSON.stringify({ mdsyncDetails: { writtenFiles } })); } catch { }
   }
   return { written, files: writtenFiles, totalCards: cards.length, filteredCards: filteredCards.length };
 }
@@ -299,8 +424,15 @@ if (require.main === module) {
   trelloToMd().then(r => {
     console.log(`written=${r.written}`);
   }).catch(e => {
-    const msg = (e as any)?.message || String(e);
-    console.error(`[ERROR] trello-to-md: ${msg}`);
+    const syncError = handleCommonErrors(e);
+    console.error(`[ERROR] trello-to-md: ${syncError.message}`);
+
+    if (syncError.suggestion) {
+      console.error(`[SUGGESTION] ${syncError.suggestion}`);
+    }
+
+    console.error(`[ERROR_CODE] ${syncError.code}`);
+
     const stack = (e as any)?.stack ? String((e as any).stack) : "";
     const nl = stack.indexOf(String.fromCharCode(10));
     const first = nl >= 0 ? stack.slice(0, nl) : (stack || String(e));
