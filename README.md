@@ -54,584 +54,333 @@ This tool synchronises Markdown documents and Trello boards so teams can manage 
 npm install trello-md-sync
 ```
 
-### 2. Get Trello Credentials
+### 2. Setup Configuration
 
-You need three pieces of information from Trello:
-
-1. **API Key:** Visit [https://trello.com/app-key](https://trello.com/app-key) and copy your key
-2. **API Token:** Click "Token" on the same page and authorize the app
-3. **Board ID:** Open your board in browser, find it in the URL: `trello.com/b/BOARD_ID/board-name`
-
-### 3. Configure Environment
-
-Create a `.env` file in your project root with the **required** parameters:
+Create a `.env` file with your Trello credentials ([How to get credentials](#how-to-get-trello-credentials)):
 
 ```env
-# ====================================
-# REQUIRED: Trello API Configuration
-# ====================================
-# Get your API key and token from https://trello.com/app-key
+# Required
 TRELLO_KEY=your_trello_api_key_here
 TRELLO_TOKEN=your_trello_token_here
 TRELLO_BOARD_ID=your_board_id_here
 
-# ====================================
-# OPTIONAL: Directory Configuration
-# ====================================
-PROJECT_ROOT=./
+# Optional
 MD_INPUT_DIR=./stories
 MD_OUTPUT_DIR=./output
-
-# ====================================
-# OPTIONAL: Trello List Mapping
-# ====================================
-# Map your workflow states to Trello list names
-TRELLO_LIST_MAP_JSON={"backlog":"Backlog","ready":"Ready","doing":"In Progress","review":"Code Review","done":"Done"}
-
-# ====================================
-# OPTIONAL: Checklist Configuration
-# ====================================
-CHECKLIST_NAME=Tasks
-
-# ====================================
-# OPTIONAL: Label Configuration
-# ====================================
-# Automatically create missing labels
-MDSYNC_ENSURE_LABELS=1
-# Required labels (comma-separated)
-REQUIRED_LABELS=bug,feature,enhancement
-# Map priority values to label names
-PRIORITY_LABEL_MAP_JSON={"high":"Priority: High","medium":"Priority: Medium","low":"Priority: Low"}
-# Map tokens to label names
-LABEL_TOKEN_MAP_JSON={"bug":"Type: Bug","feat":"Type: Feature"}
-
-# ====================================
-# OPTIONAL: Member Configuration
-# ====================================
-# Map team member aliases to Trello usernames
-MEMBER_ALIAS_MAP_JSON={"john":"john.doe","jane":"jane.smith"}
-
-# ====================================
-# OPTIONAL: Filtering Options
-# ====================================
-TRELLO_FILTER_LIST=
-TRELLO_FILTER_LABEL=
-TRELLO_FILTER_STORYID=
-
-# ====================================
-# OPTIONAL: Logging & Debugging
-# ====================================
-LOG_LEVEL=info
-LOG_JSON=0
-VERBOSE=0
-
-# ====================================
-# OPTIONAL: Runtime Behavior
-# ====================================
-MDSYNC_DRY_RUN=0
-MDSYNC_STRICT_STATUS=0
-MDSYNC_WRITE_LOCAL=0
 ```
 
-### 4. Validate Configuration
-
-**Always validate before your first sync:**
+### 3. Start Using
 
 ```bash
+# Validate setup
 npm run validate
-```
 
-This command checks:
-- ✅ Required parameters are present and valid
-- ✅ API credentials format is correct
-- ✅ Trello API connection is working
-- ✅ Directory permissions are adequate
-
-**Expected output:**
-```
-✅ Configuration validation passed!
-All required parameters are valid and Trello API is accessible.
-🚀 Validation completed in 45.23ms
-```
-
-### 5. Start Syncing
-
-**Import markdown to Trello:**
-```bash
+# Import markdown to Trello
 npm run md -- stories/my-stories.md
-```
 
-**Export Trello to markdown:**
-```bash
+# Export Trello to markdown  
 npm run trello
-```
 
-**Preview changes (dry-run):**
-```bash
+# Preview changes (dry-run)
 npm run md -- stories/my-stories.md --dry-run
 ```
 
-## Configuration Parameters
+## Configuration
+
+For detailed configuration options, see [CONFIGURATION.md](CONFIGURATION.md).
 
 ### Quick Reference
 
-| Category | Required? | Parameters |
-|----------|-----------|------------|
-| **Trello API** | ✅ **Required** | `TRELLO_KEY`, `TRELLO_TOKEN`, `TRELLO_BOARD_ID` |
-| **Directories** | Optional | `PROJECT_ROOT`, `MD_INPUT_DIR`, `MD_OUTPUT_DIR` |
-| **List Mapping** | Optional | `TRELLO_LIST_MAP_JSON` |
-| **Labels** | Optional | `MDSYNC_ENSURE_LABELS`, `REQUIRED_LABELS`, `PRIORITY_LABEL_MAP_JSON`, `LABEL_TOKEN_MAP_JSON` |
-| **Members** | Optional | `MEMBER_ALIAS_MAP_JSON` |
-| **Filtering** | Optional | `TRELLO_FILTER_LIST`, `TRELLO_FILTER_LABEL`, `TRELLO_FILTER_STORYID` |
-| **Logging** | Optional | `LOG_LEVEL`, `LOG_JSON`, `VERBOSE` |
-| **Runtime** | Optional | `MDSYNC_DRY_RUN`, `MDSYNC_STRICT_STATUS`, `MDSYNC_WRITE_LOCAL`, `CHECKLIST_NAME` |
-
-### Required Parameters
-
-These three parameters are **mandatory** for the tool to work:
-
-| Parameter | Description | How to Get |
-|-----------|-------------|------------|
-| `TRELLO_KEY` | Your Trello API key (32-character hex string) | Visit [https://trello.com/app-key](https://trello.com/app-key) |
-| `TRELLO_TOKEN` | Your Trello API token (64-character hex string or ATTA- prefixed) | Click "Token" link on the API key page |
-| `TRELLO_BOARD_ID` | Target Trello board ID (24-character alphanumeric) | Found in your board URL: `trello.com/b/BOARD_ID/board-name` |
-
-**Example:**
-```env
-TRELLO_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
-TRELLO_TOKEN=ATTA1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab
-TRELLO_BOARD_ID=5f4e3d2c1b0a9f8e7d6c5b4a
-```
-
-### Optional Parameters
-
-#### Directory Configuration
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `PROJECT_ROOT` | Current directory | Base directory for resolving relative paths |
-| `MD_INPUT_DIR` | `trello` | Input directory for markdown files (relative to PROJECT_ROOT) |
-| `MD_OUTPUT_DIR` | `trello` | Output directory for generated files (relative to PROJECT_ROOT) |
-
-#### Trello List Mapping
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `TRELLO_LIST_MAP_JSON` | Built-in mapping | JSON object mapping status names to Trello list names |
-
-**Default mapping:**
-```json
-{
-  "backlog": "Backlog",
-  "ready": "Ready",
-  "doing": "Doing",
-  "in progress": "Doing",
-  "in review": "In review",
-  "review": "In review",
-  "done": "Done",
-  "todo": "Backlog"
-}
-```
-
-**Custom mapping example:**
-```env
-TRELLO_LIST_MAP_JSON={"backlog":"📋 Backlog","doing":"🚀 In Progress","done":"✅ Done"}
-```
-
-#### Label Configuration
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `MDSYNC_ENSURE_LABELS` | `0` (false) | Automatically create missing labels in Trello |
-| `REQUIRED_LABELS` | None | Comma-separated list of labels to pre-create |
-| `PRIORITY_LABEL_MAP_JSON` | None | Map priority values to label names |
-| `LABEL_TOKEN_MAP_JSON` | None | Map tokens in content to label names |
-
-**Example:**
-```env
-MDSYNC_ENSURE_LABELS=1
-REQUIRED_LABELS=bug,feature,enhancement,documentation
-PRIORITY_LABEL_MAP_JSON={"p1":"Priority: High","p2":"Priority: Medium","p3":"Priority: Low"}
-LABEL_TOKEN_MAP_JSON={"bug":"Type: Bug","feat":"Type: Feature","chore":"Type: Chore"}
-```
-
-#### Member Configuration
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `MEMBER_ALIAS_MAP_JSON` | None | Map friendly names to Trello usernames |
-
-**Example:**
-```env
-MEMBER_ALIAS_MAP_JSON={"backend":"john.doe","frontend":"jane.smith","qa":"bob.tester"}
-```
-
-#### Filtering Options
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `TRELLO_FILTER_LIST` | None | Filter cards by list name (exact match) |
-| `TRELLO_FILTER_LABEL` | None | Filter cards by label (exact match) |
-| `TRELLO_FILTER_STORYID` | None | Filter by specific story ID |
-
-#### Logging & Debugging
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `LOG_LEVEL` | `info` | Log level: `info` or `debug` |
-| `LOG_JSON` | `0` (false) | Output logs in JSON format |
-| `VERBOSE` | `0` (false) | Enable verbose output |
-
-#### Runtime Behavior
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `MDSYNC_DRY_RUN` | `0` (false) | Preview changes without making them |
-| `MDSYNC_STRICT_STATUS` | `0` (false) | Fail if status doesn't match list mapping |
-| `MDSYNC_WRITE_LOCAL` | `0` (false) | Write changes back to local markdown files |
-| `CHECKLIST_NAME` | `Todos` | Name for Trello checklists |
-
-## Common Use Cases
-
-### Basic Workflow
-
-```bash
-# 1. Validate your configuration
-npm run validate
-
-# 2. Preview what will be created (dry-run)
-npm run md -- stories/sprint-1.md --dry-run
-
-# 3. Import stories to Trello
-npm run md -- stories/sprint-1.md
-
-# 4. Export updated stories from Trello
-npm run trello
-```
-
-### Team Collaboration
-
-```env
-# Configure team member aliases
-MEMBER_ALIAS_MAP_JSON={"john":"john.doe","jane":"jane.smith","bob":"bob.wilson"}
-
-# Automatically create labels
-MDSYNC_ENSURE_LABELS=1
-REQUIRED_LABELS=bug,feature,enhancement,documentation
-
-# Map priorities to labels
-PRIORITY_LABEL_MAP_JSON={"high":"Priority: High","medium":"Priority: Medium","low":"Priority: Low"}
-```
-
-### CI/CD Integration
-
-```bash
-# Validate configuration in CI
-npm run validate || exit 1
-
-# Dry-run to check for issues
-npm run md -- stories/*.md --dry-run
-
-# Import with strict status checking
-MDSYNC_STRICT_STATUS=1 npm run md -- stories/*.md
-```
-
-### Filtering Exports
-
-```bash
-# Export only stories from specific list
-TRELLO_FILTER_LIST="In Progress" npm run trello
-
-# Export only stories with specific label
-TRELLO_FILTER_LABEL="bug" npm run trello
-
-# Export single story
-npm run trello -- Story-1234
-```
+| Required | Optional |
+|----------|----------|
+| `TRELLO_KEY` | `MD_INPUT_DIR` |
+| `TRELLO_TOKEN` | `MD_OUTPUT_DIR` |
+| `TRELLO_BOARD_ID` | `TRELLO_LIST_MAP_JSON` |
+| | `MEMBER_ALIAS_MAP_JSON` |
+| | `PRIORITY_LABEL_MAP_JSON` |
 
 ## Usage
 
-### CLI
+### CLI Commands
 
-| Command | Purpose | Key options |
-| --- | --- | --- |
-| `npm run md -- <path>` | Import Multi-Story Markdown into a Trello board (create-only) | `--dry-run` to print the plan without calling the API |
-| `npm run trello [-- <Story-ID>] [<outputDir>]` | Export all stories or a single story into Markdown files | Positional `Story-ID` selects a single story, positional `outputDir` overrides the destination |
-| `npm run trello:story -- [Story-ID] [outputDir]` | Convenience wrapper for single-story export | Accepts `Story-ID` and `outputDir` as positional args or via `--story`, `--output` |
-| `npx ts-node src/trello-to-md.ts [Story-ID] [outputDir]` | Low-level script that powers the exports | Requires `TRELLO_KEY`, `TRELLO_TOKEN`, and `TRELLO_BOARD_ID` env vars; positional arguments follow the same rules |
+```bash
+# Import markdown to Trello
+npm run md -- stories/my-stories.md
 
-- Import Multi-Story Markdown to a Trello board (create-only):
-```bash
-npm run md -- stories/test-multi-stories-0.1.0.md
-```
-- Optional dry-run plan: simulates the sync and prints the intended Trello mutations without executing API writes:
-```bash
-npm run md -- stories/test-multi-stories-0.1.0.md --dry-run
-```
-- Export Trello board items to Single-Story Markdown files:
-```bash
+# Export Trello to markdown
 npm run trello
-npm run trello -- <Story-ID>
+
+# Export single story
+npm run trello -- Story-1234
+
+# Preview changes (dry-run)
+npm run md -- stories/my-stories.md --dry-run
 ```
 
 ### As a Library
 
 ```typescript
-import {
-  mdToTrello,
-  trelloToMdWithOptions,
-  trelloToMdSingleStory
-} from "trello-md-sync";
+import { mdToTrello, trelloToMd } from "trello-md-sync";
+import type { MdToTrelloConfig, TrelloToMdArgs } from "trello-md-sync";
+import dotenv from "dotenv";
+import path from "path";
 
+// Load environment variables
+dotenv.config();
+
+// Basic configuration
 const trelloKey = process.env.TRELLO_KEY!;
 const trelloToken = process.env.TRELLO_TOKEN!;
-const boardId = process.env.TRELLO_BOARD_ID!;
+const trelloBoardId = process.env.TRELLO_BOARD_ID!;
 
-const mdResult = await mdToTrello(trelloKey, trelloToken, boardId, "./markdown-files");
-const exportAllResult = await trelloToMdWithOptions({
-  trelloKey,
-  trelloToken,
-  boardId,
-  outputPath: "./output-dir",
-  logLevel: "info"
-});
-const exportSingleResult = await trelloToMdSingleStory(
-  trelloKey,
-  trelloToken,
-  boardId,
-  "Story-1234",
-  "./single-story"
-);
+// Example 1: Import Markdown to Trello (Create-only)
+async function importMarkdownToTrello() {
+  const config: MdToTrelloConfig = {
+    trelloKey,
+    trelloToken,
+    trelloBoardId,
+    mdInputDir: "./stories",           // Directory containing markdown files
+    mdOutputDir: "./output",           // Directory for generated files
+    projectRoot: process.cwd(),        // Base directory for relative paths
+    logLevel: "info",                  // Log level: "info" or "debug"
+    json: false,                       // Output logs in JSON format
+    dryRun: false,                     // Preview changes without executing
+    writeLocal: false,                 // Write changes back to local markdown files
+    strictStatus: false,               // Fail if status doesn't match list mapping
+    ensureLabels: true,                // Automatically create missing labels
+    checklistName: "Tasks",            // Name for Trello checklists
+    
+    // Optional: Custom list mapping
+    trelloListMapJson: {
+      "backlog": "📋 Backlog",
+      "ready": "🚀 Ready",
+      "doing": "⚡ In Progress", 
+      "review": "👀 Code Review",
+      "done": "✅ Done"
+    },
+    
+    // Optional: Label configuration
+    requiredLabels: ["bug", "feature", "enhancement"],
+    priorityLabelMap: JSON.stringify({
+      "high": "Priority: High",
+      "medium": "Priority: Medium", 
+      "low": "Priority: Low"
+    }),
+    labelTokenMap: JSON.stringify({
+      "bug": "Type: Bug",
+      "feat": "Type: Feature",
+      "chore": "Type: Chore"
+    }),
+    
+    // Optional: Member alias mapping
+    memberAliasMap: JSON.stringify({
+      "john": "john.doe",
+      "jane": "jane.smith",
+      "backend": "john.doe",
+      "frontend": "jane.smith"
+    })
+  };
 
-mdResult.logs.forEach((entry) => {
-  console.log(`[${entry.level.toUpperCase()}] ${entry.message}`, ...entry.args);
-});
-
-if (!mdResult.result.success) {
-  console.error("Import run failed", mdResult.result.errors);
-}
-
-if (exportAllResult.result.success) {
-  console.log(`Exported ${exportAllResult.result.files.length} files to ${exportAllResult.result.outputDir}`);
-} else {
-  console.error("Bulk export failed", exportAllResult.result.errors);
-}
-
-if (!exportSingleResult.result.success) {
-  console.error("Single story export failed", exportSingleResult.result.errors);
-}
-```
-
-## Configuration Validation
-
-The package includes comprehensive configuration validation to help you catch issues early:
-
-### Validate Configuration Command
-
-```bash
-# Validate your current configuration
-npm run validate
-
-# Or use the CLI directly
-validate-config --verbose
-```
-
-### Configuration Validation in Code
-
-```typescript
-import { validateTrelloConfig } from "trello-md-sync";
-
-const validation = validateTrelloConfig({
-  trelloKey: process.env.TRELLO_KEY,
-  trelloToken: process.env.TRELLO_TOKEN,
-  trelloBoardId: process.env.TRELLO_BOARD_ID
-});
-
-if (!validation.isValid) {
-  console.error("Configuration errors:");
-  validation.errors.forEach(error => {
-    console.error(`- ${error.field}: ${error.message}`);
-    if (error.suggestion) {
-      console.error(`  💡 ${error.suggestion}`);
+  try {
+    const result = await mdToTrello(config);
+    
+    console.log(`✅ Import completed successfully!`);
+    console.log(`📊 Results: ${result.result.created} created, ${result.result.updated} updated, ${result.result.skipped} skipped`);
+    
+    // Handle any errors
+    if (result.result.errors.length > 0) {
+      console.log("⚠️ Some stories had issues:");
+      result.result.errors.forEach(error => {
+        console.log(`  - ${error.storyId}: ${error.message}`);
+      });
     }
-  });
-  process.exit(1);
+    
+    // Show dry-run summary if available
+    if (result.dryRunSummary) {
+      console.log("🔍 Dry-run summary:");
+      console.log(`  - Would create: ${result.dryRunSummary.created.length} cards`);
+      console.log(`  - Would update: ${result.dryRunSummary.updated.length} cards`);
+      console.log(`  - Missing labels: ${result.dryRunSummary.missingLabels.length}`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error("❌ Import failed:", error);
+    throw error;
+  }
+}
+
+// Example 2: Export Trello to Markdown (Read-only)
+async function exportTrelloToMarkdown() {
+  const config: TrelloToMdArgs = {
+    trelloKey,
+    trelloToken,
+    trelloBoardId,
+    mdOutputDir: "./exported-stories",  // Output directory for markdown files
+    checklistName: "Tasks",             // Name of checklist to export as todos
+    
+    // Optional: Filter options
+    // list: ["Backlog", "In Progress"], // Only export from specific lists
+    // label: ["bug", "feature"],        // Only export cards with specific labels
+    // storyId: ["STORY-1001"],          // Only export specific story IDs
+    
+    // Optional: Mapping configurations
+    priorityLabelMap: JSON.stringify({
+      "high": "Priority: High",
+      "medium": "Priority: Medium",
+      "low": "Priority: Low"
+    }),
+    memberAliasMap: JSON.stringify({
+      "john.doe": "john",
+      "jane.smith": "jane"
+    })
+  };
+
+  try {
+    const result = await trelloToMd(config, {
+      logLevel: "info",
+      json: false,
+      projectRoot: process.cwd()
+    });
+    
+    console.log(`✅ Export completed successfully!`);
+    console.log(`📁 Exported ${result.written} files from ${result.totalCards} total cards`);
+    console.log(`🔍 Filtered to ${result.filteredCards} cards based on criteria`);
+    
+    // List exported files
+    result.files.forEach(file => {
+      console.log(`  📄 ${file.file} - ${file.storyId}: ${file.title} (${file.status})`);
+    });
+    
+    return result;
+  } catch (error) {
+    console.error("❌ Export failed:", error);
+    throw error;
+  }
+}
+
+// Usage examples
+async function main() {
+  try {
+    // Import markdown stories to Trello
+    await importMarkdownToTrello();
+    
+    // Export all Trello cards to markdown
+    await exportTrelloToMarkdown();
+    
+  } catch (error) {
+    console.error("Main execution failed:", error);
+    process.exit(1);
+  }
+}
+
+// Run if this file is executed directly
+if (require.main === module) {
+  main();
 }
 ```
 
-### Enhanced Error Handling
+## Examples
 
-```typescript
-import { mdToTrello, handleCommonErrors, formatErrorForUser } from "trello-md-sync";
+### Setting up package.json Scripts
 
-try {
-  const result = await mdToTrello(config);
-  console.log("Sync completed successfully");
-} catch (error) {
-  const syncError = handleCommonErrors(error);
-  console.error(formatErrorForUser(syncError));
-  
-  // Get recovery suggestions
-  const actions = getRecoveryActions(syncError);
-  console.log("Suggested actions:");
-  actions.forEach(action => console.log(`- ${action}`));
-}
-```
-
-## Troubleshooting
-
-### Configuration Validation
-
-Before running sync operations, validate your configuration:
-
-```bash
-npm run validate
-```
-
-Or with verbose output to see performance metrics:
-
-```bash
-npm run validate --verbose
-```
-
-### Common Configuration Issues
-
-#### 1. Missing Required Parameters
-
-**Error:**
-```
-❌ Configuration validation failed:
-  trelloKey: Trello API key is required (Get your API key from https://trello.com/app-key)
-```
-
-**Solution:**
-- Ensure all three required parameters are set in your `.env` file
-- Get your API key from [https://trello.com/app-key](https://trello.com/app-key)
-- Generate a token by clicking the "Token" link on the API key page
-
-#### 2. Invalid API Key Format
-
-**Error:**
-```
-❌ trelloKey: Trello API key format is invalid
-```
-
-**Solution:**
-- API key should be a 32-character hexadecimal string
-- Example: `a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6`
-- Verify you copied the entire key from the Trello API page
-
-#### 3. Invalid Token Format
-
-**Error:**
-```
-❌ trelloToken: Trello token format is invalid
-```
-
-**Solution:**
-- Token should be a 64-character hexadecimal string or start with `ATTA-`
-- Example: `ATTA1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab`
-- Generate a new token if the current one is invalid
-
-#### 4. Board Not Found
-
-**Error:**
-```
-❌ Trello board not found or inaccessible
-```
-
-**Solution:**
-- Verify the board ID is correct (check your board URL)
-- Ensure you have access to the board
-- Confirm the token has read/write permissions for the board
-
-#### 5. Permission Denied
-
-**Error:**
-```
-❌ Output directory validation failed: Permission denied
-```
-
-**Solution:**
-- Check file/directory permissions
-- Ensure you have read/write access to the specified directories
-- Try running with appropriate permissions or change the directory
-
-#### 6. Missing Labels
-
-**Warning:**
-```
-⚠️  missing labels for STORY-1234: Priority: High, Type: Bug
-```
-
-**Solution:**
-- Set `MDSYNC_ENSURE_LABELS=1` to automatically create missing labels
-- Or manually create the labels in your Trello board
-- Configure `PRIORITY_LABEL_MAP_JSON` to map priority values to existing labels
-
-#### 7. Missing Members
-
-**Warning:**
-```
-⚠️  missing members for STORY-1234: john, jane
-```
-
-**Solution:**
-- Configure `MEMBER_ALIAS_MAP_JSON` to map aliases to actual Trello usernames
-- Example: `{"john":"john.doe","jane":"jane.smith"}`
-- Ensure the Trello usernames exist and have access to the board
-
-### Getting Help
-
-- **Validate configuration:** Run `npm run validate` to check your setup
-- **CLI help:** Use `--help` flag with any command for usage information
-- **Verbose mode:** Add `--verbose` or set `LOG_LEVEL=debug` for detailed logs
-- **Dry run:** Use `--dry-run` to preview changes without making them
-- **Error messages:** Review error messages for specific suggestions and recovery actions
-
-### Debug Mode
-
-Enable debug logging to see detailed information:
-
-```bash
-# Via environment variable
-LOG_LEVEL=debug npm run md
-
-# Via CLI flag
-npm run md -- --debug
-
-# Via .env file
-LOG_LEVEL=debug
-```
-
-### Examples
-
-The `examples/` workspace demonstrates end-to-end usage with ready-made scripts:
-
-- `examples/md-to-trello.ts` — imports markdown from `examples/md/` into a Trello board.
-- `examples/validation-examples.md` — configuration validation examples and troubleshooting
-- `examples/config-example.json` — sample configuration file with all options
-- `examples/trello-to-md.ts` — exports Trello board items into `examples/items/`.
-- `examples/tests/` — Mocha scenarios that validate the flows.
-
-Sample `package.json` scripts (from `examples/package.json`):
+Add these scripts to your `package.json` for easy CLI usage:
 
 ```json
 {
   "scripts": {
-    "md": "ts-node ./md-to-trello.ts",
-    "trello": "ts-node ./trello-to-md.ts",
-    "trello:story": "ts-node ./trello-to-md.ts --story"
+    "md-sync:import": "trello-md-sync import",
+    "md-sync:export": "trello-md-sync export", 
+    "md-sync:validate": "validate-config",
+    "md-sync:dry-run": "trello-md-sync import --dry-run"
+  },
+  "devDependencies": {
+    "trello-md-sync": "^0.1.0",
+    "dotenv": "^16.3.1",
+    "typescript": "^5.1.6",
+    "ts-node": "^10.9.1"
   }
 }
 ```
 
-Run them from the `examples/` directory once `.env` is configured:
+### Project Structure Example
+
+```
+your-project/
+├── .env                    # Trello credentials
+├── package.json           # Scripts configuration
+├── stories/               # Input markdown files
+│   ├── sprint-1.md
+│   └── backlog.md
+├── output/                # Generated files
+└── exported-stories/      # Exported markdown files
+```
+
+### Complete Working Examples
+
+The `examples/` directory contains ready-to-run demonstrations:
+
+- **`examples/md-to-trello.ts`** — Import markdown stories to Trello
+- **`examples/trello-to-md.ts`** — Export Trello cards to markdown
+- **`examples/package.json`** — Sample scripts configuration
+- **`examples/.env.example`** — Environment variables template
+- **`examples/tests/`** — Integration test scenarios
+
+To use the examples:
 
 ```bash
-npm run md            # imports multi-story markdown from examples/md/
-npm run trello        # exports all stories to examples/items/
-npm run trello:story  # exports a single story, prompting when IDs are missing
+# Clone and setup
+git clone https://github.com/nzlouislu/trello-md-sync.git
+cd trello-md-sync/examples
+
+# Configure environment
+cp ../.env.example .env
+# Edit .env with your Trello credentials
+
+# Install dependencies
+npm install
+
+# Run examples
+npm run md            # Import markdown to Trello
+npm run trello        # Export Trello to markdown
+npm run validate      # Validate configuration
+```
+
+## Configuration Validation
+
+The tool automatically validates your configuration and provides helpful error messages when issues are detected. This happens automatically during sync operations, so manual validation is optional.
+
+### Optional: Manual Validation
+
+```bash
+# Check configuration before running sync
+npm run validate
+
+# Detailed validation output
+validate-config --verbose
+```
+
+**When validation is useful:**
+- Setting up for the first time
+- Debugging connection issues  
+- CI/CD pipeline health checks
+- Troubleshooting API permissions
+
+## Troubleshooting
+
+For detailed troubleshooting information, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+### Quick Debug
+
+```bash
+# Validate configuration
+npm run validate
+
+# Enable debug logging
+LOG_LEVEL=debug npm run md
+
+# Preview changes without executing
+npm run md -- stories/my-stories.md --dry-run
 ```
 
 ### Using trello:story
@@ -662,53 +411,22 @@ npm run trello:story -- --story Story-0112 --output ./stories/single
 
 ## How to Get Trello Credentials
 
-### Getting Your API Key and Token
+### API Key and Token
 
-1. **Get API Key:**
-   - Visit [https://trello.com/app-key](https://trello.com/app-key)
-   - Copy the "Key" shown at the top (32-character hex string)
-   - This is your `TRELLO_KEY`
+1. Visit [https://trello.com/app-key](https://trello.com/app-key)
+2. Copy your **API Key** (32-character hex string)
+3. Click **"Token"** link and authorize the app
+4. Copy the generated **Token** (64-character hex or ATTA- prefixed)
 
-2. **Generate Token:**
-   - On the same page, click the "Token" link
-   - Authorize the application
-   - Copy the generated token (64-character hex string or ATTA- prefixed)
-   - This is your `TRELLO_TOKEN`
+### Board ID
 
-### Getting Your Board ID
+**From Browser URL:**
+- Open your Trello board
+- Copy the ID from URL: `trello.com/b/BOARD_ID/board-name`
 
-**Method 1: From Browser URL**
-- Open your Trello board in a web browser
-- Look at the URL: `https://trello.com/b/BOARD_ID/board-name`
-- The `BOARD_ID` is the alphanumeric string between `/b/` and the board name
-- Example: In `https://trello.com/b/5f4e3d2c1b0a9f8e7d6c5b4a/my-project`, the board ID is `5f4e3d2c1b0a9f8e7d6c5b4a`
-
-**Method 2: Using Trello API**
-
-List all your boards to find the correct ID:
-
+**Using API:**
 ```bash
-# Using curl (Linux/Mac)
 curl "https://api.trello.com/1/members/me/boards?key=YOUR_KEY&token=YOUR_TOKEN"
-
-# Using PowerShell (Windows)
-$key = "your_trello_key"
-$token = "your_trello_token"
-
-$response = Invoke-RestMethod `
-    -Uri "https://api.trello.com/1/members/me/boards?key=$key&token=$token" `
-    -Method GET
-
-$response | Select-Object id, name | Format-Table
-```
-
-**Method 3: Using the Validation Command**
-
-After setting up your `.env` file with `TRELLO_KEY` and `TRELLO_TOKEN`, you can use the validation command to test different board IDs:
-
-```bash
-# Test a specific board ID
-TRELLO_BOARD_ID=your_board_id npm run validate
 ```
 
 ## API Reference
@@ -823,6 +541,9 @@ Priority: High
 
 ### Labels
 sync, trello, parser
+
+### Assignees
+backend
 ```
 
 This format is generated by export and must not be used for import. The exported files include all available metadata from the Trello card, including acceptance criteria as checkboxes, priority level, and associated labels.
